@@ -1,0 +1,110 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AppProvider, useApp } from './context/AppContext';
+
+// Layout
+import AppLayout from './components/layout/AppLayout';
+
+// Auth pages
+import Login    from './pages/Login';
+import Register from './pages/Register';
+
+// Public pages
+import Landing   from './pages/Landing';
+import About     from './pages/About';
+
+// App pages
+import Dashboard        from './pages/Dashboard';
+import Challenges       from './pages/Challenges';
+import ChallengeDetails from './pages/ChallengeDetails';
+import Leaderboard      from './pages/Leaderboard';
+import Events           from './pages/Events';
+import Profile          from './pages/Profile';
+import Settings         from './pages/Settings';
+
+// Admin
+import AdminLayout       from './pages/admin/AdminLayout';
+import AdminDashboard    from './pages/admin/AdminDashboard';
+import ManageChallenges  from './pages/admin/ManageChallenges';
+import CreateChallenge   from './pages/admin/CreateChallenge';
+import AdminPlaceholder  from './pages/admin/AdminPlaceholder';
+
+// Route guards
+function PrivateRoute({ children }) {
+  const { isAuthenticated, loading } = useApp();
+  if (loading) return null;
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+}
+
+function AdminRoute({ children }) {
+  const { isAuthenticated, user, loading } = useApp();
+  if (loading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
+function PublicOnlyRoute({ children }) {
+  const { isAuthenticated, loading } = useApp();
+  if (loading) return null;
+  return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public auth pages (no navbar layout) */}
+      <Route path="/login"    element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+      <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+
+      {/* Landing + public pages (with navbar, no sidebar) */}
+      <Route element={<AppLayout showSidebar={false} />}>
+        <Route path="/"     element={<Landing />} />
+        <Route path="/about" element={<About />} />
+      </Route>
+
+      {/* Leaderboard / Events — accessible without login */}
+      <Route element={<AppLayout showSidebar={false} />}>
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/events"      element={<Events />} />
+      </Route>
+
+      {/* Authenticated app pages */}
+      <Route element={<PrivateRoute><AppLayout showSidebar={true} /></PrivateRoute>}>
+        <Route path="/dashboard"         element={<Dashboard />} />
+        <Route path="/challenges"        element={<Challenges />} />
+        <Route path="/challenges/:id"    element={<ChallengeDetails />} />
+        <Route path="/profile"           element={<Profile />} />
+        <Route path="/settings"          element={<Settings />} />
+      </Route>
+
+      {/* Admin pages */}
+      <Route path="/admin" element={<AdminRoute><AppLayout showSidebar={false} showFooter={false} /></AdminRoute>}>
+        <Route element={<AdminLayout />}>
+          <Route index                      element={<AdminDashboard />} />
+          <Route path="challenges"          element={<ManageChallenges />} />
+          <Route path="challenges/new"      element={<CreateChallenge />} />
+          <Route path="challenges/:id/edit" element={<CreateChallenge />} />
+          <Route path="categories"          element={<AdminPlaceholder title="Categories" />} />
+          <Route path="users"               element={<AdminPlaceholder title="User Management" />} />
+          <Route path="submissions"         element={<AdminPlaceholder title="Submissions" />} />
+          <Route path="events"              element={<AdminPlaceholder title="Event Management" />} />
+          <Route path="settings"            element={<AdminPlaceholder title="Admin Settings" />} />
+        </Route>
+      </Route>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppProvider>
+        <AppRoutes />
+      </AppProvider>
+    </BrowserRouter>
+  );
+}
