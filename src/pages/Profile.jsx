@@ -45,7 +45,7 @@ export default function Profile() {
             {/* Banner */}
             <div style={{
               height: 100,
-              background: 'linear-gradient(135deg, rgba(0,255,136,0.15) 0%, rgba(0,212,255,0.1) 50%, rgba(139,92,246,0.1) 100%)',
+              background: 'linear-gradient(135deg, rgba(14,201,181,0.1) 0%, rgba(14,201,181,0.06) 50%, rgba(139,92,246,0.06) 100%)',
               position: 'relative',
             }}>
               <div style={{
@@ -54,7 +54,7 @@ export default function Profile() {
                 background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontFamily: 'var(--font-mono)', fontSize: '1.4rem', fontWeight: 900,
-                color: '#07111e',
+                color: '#071a1a',
                 border: '3px solid var(--bg-card)',
               }}>
                 {user.username[0].toUpperCase()}
@@ -73,7 +73,7 @@ export default function Profile() {
               {[
                 { icon: Trophy, color: 'var(--accent-green)',  label: 'Global Rank', value: `#${user.rank}` },
                 { icon: Zap,    color: 'var(--accent-cyan)',   label: 'Total Points', value: user.points?.toLocaleString() },
-                { icon: Flag,   color: 'var(--accent-blue)',   label: 'Challenges Solved', value: solvedCount },
+                { icon: Flag,   color: 'var(--accent-green)',   label: 'Challenges Solved', value: solvedCount },
                 { icon: Flame,  color: 'var(--accent-orange)', label: 'Current Streak', value: `${user.streak} days` },
                 { icon: Target, color: 'var(--accent-purple)', label: 'Completion', value: `${completionPct}%` },
               ].map(({ icon: Icon, color, label, value }) => (

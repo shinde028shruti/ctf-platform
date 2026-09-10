@@ -10,7 +10,7 @@ const typeColors = {
   solve: 'var(--accent-green)',
   achievement: '#ffd700',
   new_challenge: 'var(--accent-cyan)',
-  event: 'var(--accent-blue)',
+  event: 'var(--accent-green)',
   rank: 'var(--accent-purple)',
   hint: 'var(--accent-yellow)',
 };

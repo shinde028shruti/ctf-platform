@@ -21,7 +21,7 @@ function AnimatedBg() {
     <div style={{
       position: 'absolute', bottom: 40, left: 40,
       fontFamily: 'var(--font-mono)', fontSize: '0.75rem',
-      color: 'rgba(0,255,136,0.2)', lineHeight: 2,
+      color: 'rgba(14,201,181,0.2)', lineHeight: 2,
       pointerEvents: 'none',
     }}>
       {lines.map((l, i) => <div key={i}>{l}</div>)}
@@ -72,7 +72,7 @@ export default function Login() {
       {/* Grid overlay */}
       <div style={{
         position: 'absolute', inset: 0,
-        backgroundImage: 'linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(rgba(14,201,181,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(14,201,181,0.03) 1px, transparent 1px)',
         backgroundSize: '60px 60px',
         pointerEvents: 'none',
       }} />
@@ -88,7 +88,7 @@ export default function Login() {
                 strokeLinecap="round" strokeLinejoin="round" />
               <defs>
                 <linearGradient id="lg1" x1="10" y1="6" x2="54" y2="60" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#00ff88" /><stop offset="1" stopColor="#00d4ff" />
+                  <stop stopColor="#0ec9b5" /><stop offset="1" stopColor="#3dddd0" />
                 </linearGradient>
               </defs>
             </svg>

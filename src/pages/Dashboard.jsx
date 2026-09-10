@@ -112,7 +112,7 @@ export default function Dashboard() {
                     gap: 16,
                     transition: 'all 0.2s ease',
                   }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,255,136,0.25)'; e.currentTarget.style.background = 'var(--bg-card-hover)'; }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(14,201,181,0.25)'; e.currentTarget.style.background = 'var(--bg-card-hover)'; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.background = 'var(--bg-card)'; }}
                   >
                     <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

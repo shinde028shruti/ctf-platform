@@ -40,7 +40,7 @@ export default function Landing() {
               width: `${[200,300,150,250,180,220][i]}px`,
               height: `${[200,300,150,250,180,220][i]}px`,
               borderRadius: '50%',
-              background: `radial-gradient(circle, ${['rgba(0,255,136,0.04)', 'rgba(0,212,255,0.03)', 'rgba(139,92,246,0.03)', 'rgba(0,255,136,0.03)', 'rgba(0,212,255,0.04)', 'rgba(59,130,246,0.03)'][i]} 0%, transparent 70%)`,
+              background: `radial-gradient(circle, ${['rgba(14,201,181,0.04)', 'rgba(14,201,181,0.03)', 'rgba(139,92,246,0.03)', 'rgba(14,201,181,0.03)', 'rgba(14,201,181,0.04)', 'rgba(14,201,181,0.03)'][i]} 0%, transparent 70%)`,
               left: `${[10,70,30,80,5,55][i]}%`,
               top: `${[20,60,80,10,50,40][i]}%`,
               animation: `float ${[6,8,7,9,6.5,7.5][i]}s ease-in-out infinite`,
@@ -243,7 +243,7 @@ export default function Landing() {
                     <span className={`lb-rank ${i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : ''}`} style={{ minWidth: 32 }}>
                       #{u.rank}
                     </span>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700, color: '#07111e', margin: '0 12px', flexShrink: 0 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700, color: '#071a1a', margin: '0 12px', flexShrink: 0 }}>
                       {u.username[0].toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
@@ -278,7 +278,7 @@ export default function Landing() {
                   position: 'relative',
                 }}>
                   <div style={{
-                    background: 'linear-gradient(135deg, rgba(0,255,136,0.08) 0%, rgba(0,212,255,0.05) 100%)',
+                    background: 'linear-gradient(135deg, rgba(14,201,181,0.08) 0%, rgba(14,201,181,0.05) 100%)',
                     padding: '28px',
                     borderBottom: '1px solid var(--border-color)',
                   }}>
@@ -322,7 +322,7 @@ export default function Landing() {
 
       {/* ── CTA ── */}
       <section style={{
-        background: 'linear-gradient(135deg, rgba(0,255,136,0.06) 0%, rgba(0,212,255,0.04) 50%, rgba(139,92,246,0.04) 100%)',
+        background: 'linear-gradient(135deg, rgba(14,201,181,0.06) 0%, rgba(14,201,181,0.04) 50%, rgba(139,92,246,0.04) 100%)',
         borderTop: '1px solid var(--border-color)',
         borderBottom: '1px solid var(--border-color)',
         padding: '80px 0',

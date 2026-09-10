@@ -77,7 +77,7 @@ export default function Settings() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
             {TABS.map(({ id, icon: Icon, label }) => (
               <button key={id} onClick={() => { setTab(id); setError(''); setSaved(false); }} style={{
-                width: '100%', background: tab === id ? 'rgba(0,255,136,0.07)' : 'none',
+                width: '100%', background: tab === id ? 'rgba(14,201,181,0.07)' : 'none',
                 border: 'none', borderLeft: tab === id ? '3px solid var(--accent-green)' : '3px solid transparent',
                 color: tab === id ? 'var(--accent-green)' : 'var(--text-secondary)',
                 padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10,
@@ -193,7 +193,7 @@ export default function Settings() {
                         <span style={{
                           position: 'absolute', top: 3, left: notifPrefs[key] ? 21 : 3,
                           width: 16, height: 16, borderRadius: '50%',
-                          background: notifPrefs[key] ? '#07111e' : 'var(--text-muted)',
+                          background: notifPrefs[key] ? '#071a1a' : 'var(--text-muted)',
                           transition: 'left 0.25s',
                         }} />
                       </span>

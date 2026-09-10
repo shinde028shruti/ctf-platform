@@ -35,7 +35,7 @@ export default function SearchOverlay({ onClose }) {
     const eventResults = events
       .filter(e => e.title.toLowerCase().includes(q))
       .slice(0, 2)
-      .map(e => ({ type: 'event', icon: Calendar, label: e.title, sub: e.subtitle, color: 'var(--accent-blue)', to: `/events` }));
+      .map(e => ({ type: 'event', icon: Calendar, label: e.title, sub: e.subtitle, color: 'var(--accent-green)', to: `/events` }));
 
     setResults([...challengeResults, ...userResults, ...categoryResults, ...eventResults]);
   }, [query]);

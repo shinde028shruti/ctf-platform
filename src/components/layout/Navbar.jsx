@@ -59,7 +59,7 @@ export default function Navbar() {
               <defs>
                 <linearGradient id="shield-grad" x1="10" y1="6" x2="54" y2="60" gradientUnits="userSpaceOnUse">
                   <stop stopColor="#00ff88"/>
-                  <stop offset="1" stopColor="#00d4ff"/>
+                  <stop offset="1" stopColor="#0ec9b5"/>
                 </linearGradient>
               </defs>
             </svg>

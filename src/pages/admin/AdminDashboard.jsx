@@ -24,7 +24,7 @@ export default function AdminDashboard() {
     { icon: CheckCircle, color: 'var(--diff-easy)',      label: 'Published',        value: published },
     { icon: FileText,    color: 'var(--accent-yellow)',  label: 'Drafts',           value: drafts },
     { icon: TrendingUp,  color: 'var(--accent-cyan)',    label: 'Total Solves',     value: totalSolves.toLocaleString() },
-    { icon: Users,       color: 'var(--accent-blue)',    label: 'Registered Users', value: 4820 },
+    { icon: Users,       color: 'var(--accent-green)',    label: 'Registered Users', value: 4820 },
   ];
 
   const recent = [...challenges].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
@@ -61,7 +61,7 @@ export default function AdminDashboard() {
         {[
           { to: '/admin/challenges/new',  label: 'Create Challenge', icon: Plus,      color: 'var(--accent-green)' },
           { to: '/admin/challenges',      label: 'Manage Challenges', icon: Flag,     color: 'var(--accent-cyan)' },
-          { to: '/admin/users',           label: 'View Users',       icon: Users,     color: 'var(--accent-blue)' },
+          { to: '/admin/users',           label: 'View Users',       icon: Users,     color: 'var(--accent-green)' },
           { to: '/challenges',            label: 'View Platform',    icon: Eye,       color: 'var(--accent-purple)' },
         ].map(({ to, label, icon: Icon, color }) => (
           <div key={to} className="col-6 col-md-3">
