@@ -66,6 +66,9 @@
 /* ── Base Reset & Body ──────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Custom Neon Cursor (Night RGB hand) ────────────────────── */
+* { cursor: url('/cursor.png') 2 1, auto !important; }
+
 html { scroll-behavior: smooth; }
 
 body {
