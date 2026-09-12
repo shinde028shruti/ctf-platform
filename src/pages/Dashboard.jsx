@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, Flag, Zap, Flame, TrendingUp, CheckCircle, Clock, Lightbulb, ArrowRight, Target } from 'lucide-react';
+import { Trophy, Flag, Zap, CheckCircle, Lightbulb, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import StatCard from '../components/ui/StatCard';
 import Terminal from '../components/ui/Terminal';
@@ -10,15 +10,15 @@ const termLines = [
   { type: 'cmd', text: './cyberforge --status', delay: 300 },
   { type: 'out', text: 'Platform: ONLINE', delay: 900 },
   { type: 'out', text: 'Active challenges: 18', delay: 1300 },
-  { type: 'out', text: 'Your streak: 7 days 🔥', delay: 1700 },
+  { type: 'out', text: 'Your streak: 7 days', delay: 1700 },
   { type: 'success', text: 'Keep hacking, operator.', delay: 2300 },
 ];
 
 function ActivityIcon({ type }) {
   const props = { size: 14 };
   if (type === 'solve') return <CheckCircle {...props} color="var(--accent-green)" />;
-  if (type === 'badge') return <Trophy {...props} color="#ffd700" />;
-  if (type === 'hint') return <Lightbulb {...props} color="var(--accent-yellow)" />;
+  if (type === 'badge') return <Trophy {...props} color="var(--accent-green)" />;
+  if (type === 'hint') return <Lightbulb {...props} color="var(--accent-green)" />;
   return <Zap {...props} color="var(--accent-cyan)" />;
 }
 
@@ -66,21 +66,16 @@ export default function Dashboard() {
             Sharpen your skills. Break the challenges. Capture the flag.
           </p>
         </div>
-        <div className="d-flex gap-2 animate-fade-in delay-200">
-          <Link to="/challenges" className="btn btn-primary d-flex align-items-center gap-2">
-            <Flag size={16} /> New Challenge
-          </Link>
-        </div>
       </div>
 
       {/* Stat Cards */}
       <div className="row g-3 mb-4">
         {[
-          { value: user.points, label: 'Total Points', icon: Zap, color: 'var(--accent-green)', trend: 200 },
-          { value: solvedCount, label: 'Challenges Solved', icon: Flag, color: 'var(--accent-cyan)' },
-          { value: user.rank, label: 'Global Rank', icon: Trophy, color: '#ffd700', prefix: '#', animate: false },
-          { value: user.streak, label: 'Day Streak', icon: Flame, color: 'var(--accent-orange)', suffix: ' Days' },
-          { value: completionPct, label: 'Completion', icon: Target, color: 'var(--accent-purple)', suffix: '%' },
+          { value: user.points, label: 'Total Points' },
+          { value: solvedCount, label: 'Challenges Solved' },
+          { value: user.rank, label: 'Global Rank', prefix: '#', animate: false },
+          { value: user.streak, label: 'Day Streak', suffix: ' Days' },
+          { value: completionPct, label: 'Completion', suffix: '%' },
         ].map((s, i) => (
           <div key={s.label} className={`col-6 col-md-4 col-lg animate-fade-in-up delay-${i * 100}`}>
             <StatCard {...s} />
@@ -121,7 +116,7 @@ export default function Dashboard() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 4 }}>{c.title}</div>
                       <div className="d-flex align-items-center gap-2">
-                        <span className="cat-chip" style={{ fontSize: '0.62rem' }}>{c.category}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--accent-green)' }}>{c.category}</span>
                         <span className={`diff-badge diff-${c.difficulty.toLowerCase()}`}>{c.difficulty}</span>
                       </div>
                     </div>

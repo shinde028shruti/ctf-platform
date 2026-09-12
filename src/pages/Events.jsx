@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Users, Trophy, Clock, ChevronDown, ChevronUp, CheckCircle, ExternalLink } from 'lucide-react';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import MedalIcon from '../components/ui/MedalIcon';
 import { eventService } from '../services/eventService';
 
 function Countdown({ targetDate }) {
@@ -85,7 +86,7 @@ function EventCard({ event, onJoin }) {
                   background: 'rgba(14,201,181,0.12)', border: '1px solid rgba(14,201,181,0.3)',
                   color: 'var(--accent-green)', padding: '2px 10px', borderRadius: 20,
                   textTransform: 'uppercase', letterSpacing: '0.1em',
-                }}>⭐ Featured</span>
+                }}>Featured</span>
               )}
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: statusColor[event.status] }}>
                 <span className="status-dot" style={{ background: statusColor[event.status], marginRight: 5 }} />
@@ -146,14 +147,14 @@ function EventCard({ event, onJoin }) {
           { icon: Calendar, label: 'Start Date', value: new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
           { icon: Calendar, label: 'End Date',   value: new Date(event.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
           { icon: Users,    label: 'Participants', value: event.participants.toLocaleString() },
-          { icon: Trophy,   label: 'Top Prize',  value: event.prizes?.[0]?.reward?.split('+')[0]?.trim() || 'TBA' },
-        ].map(({ icon: Icon, label, value }, i) => (
+          { icon: Trophy,   color: 'var(--accent-green)', label: 'Top Prize',  value: event.prizes?.[0]?.reward?.split('+')[0]?.trim() || 'TBA' },
+        ].map(({ icon: Icon, color, label, value }, i) => (
           <div key={label} className="col-6 col-md-3" style={{
             padding: '16px 20px',
             borderRight: i < 3 ? '1px solid var(--border-color)' : 'none',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Icon size={13} color="var(--text-muted)" />
+              <Icon size={13} color={color || 'var(--text-muted)'} />
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{label}</span>
             </div>
             <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)' }}>{value}</div>
@@ -216,8 +217,9 @@ function EventCard({ event, onJoin }) {
                           background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
                           borderRadius: 10, padding: '14px 16px',
                         }}>
-                          <div style={{ fontWeight: 700, fontSize: '0.875rem', marginBottom: 4, color: i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : 'var(--text-primary)' }}>
-                            {['🥇', '🥈', '🥉'][i] || '🎖'} {p.place}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.875rem', marginBottom: 4, color: i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : 'var(--text-primary)' }}>
+                            <MedalIcon tier={i + 1} size={18} />
+                            {p.place}
                           </div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{p.reward}</div>
                         </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, User, Mail, Lock, CheckCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import AnimatedAuthBg from '../components/ui/AnimatedAuthBg';
 
 export default function Register() {
   const { register, isAuthenticated } = useApp();
@@ -28,11 +29,13 @@ export default function Register() {
   const strength = pwStrength(form.password);
   const strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
   const strengthColors = ['', 'var(--accent-red)', 'var(--accent-orange)', 'var(--accent-yellow)', 'var(--diff-easy)'];
+  const usernameInvalid = form.username.length > 0 && !/^[a-zA-Z0-9_]+$/.test(form.username);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.username || !form.email || !form.password) { setError('All fields are required.'); return; }
     if (form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
+    if (form.username.length > 20 || !/^[a-zA-Z0-9_]+$/.test(form.username)) { setError('Username must be 3–20 characters. Letters, numbers, and underscores only.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { setError('Enter a valid email address.'); return; }
     if (form.password.length < 6) { setError('Password must be at least 6 characters.'); return; }
     if (form.password !== form.confirm) { setError('Passwords do not match.'); return; }
@@ -50,6 +53,7 @@ export default function Register() {
   return (
     <div className="auth-page">
       <div className="auth-bg" />
+      <AnimatedAuthBg />
       <div style={{
         position: 'absolute', inset: 0,
         backgroundImage: 'linear-gradient(rgba(14,201,181,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(14,201,181,0.025) 1px, transparent 1px)',
@@ -57,9 +61,9 @@ export default function Register() {
       }} />
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 460, padding: '0 16px' }}>
-        <div className="text-center mb-4">
+        <div className="text-center mb-3">
           <Link to="/" className="d-inline-flex align-items-center gap-2 text-decoration-none mb-3">
-            <svg width="40" height="40" viewBox="0 0 64 64" fill="none">
+            <svg width="36" height="36" viewBox="0 0 64 64" fill="none">
               <path d="M32 6 L54 17 L54 39 C54 52 32 60 32 60 C32 60 10 52 10 39 L10 17 Z"
                 fill="none" stroke="url(#lg2)" strokeWidth="2.5" />
               <path d="M23 32 L30 39 L42 25" stroke="url(#lg2)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -71,12 +75,12 @@ export default function Register() {
             </svg>
           </Link>
           <div className="auth-title">CYBERFORGE</div>
-          <p style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', marginTop: 8 }}>
-            Join the arena. Prove your skills.
+          <p style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', marginTop: 4 }}>
+            Join the CYBERFORGE. Prove your skills.
           </p>
         </div>
 
-        <div className="auth-card">
+        <div className="auth-card" style={{ padding: '28px' }}>
           {success ? (
             <div className="text-center" style={{ padding: '24px 0' }}>
               <CheckCircle size={48} color="var(--accent-green)" style={{ marginBottom: 16 }} />
@@ -85,7 +89,7 @@ export default function Register() {
             </div>
           ) : (
             <>
-              <h5 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 24 }}>Create your account</h5>
+              <h5 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 16 }}>Create your account</h5>
 
               {error && (
                 <div style={{
@@ -98,22 +102,24 @@ export default function Register() {
               )}
 
               <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label className="form-label"><User size={13} style={{ marginRight: 6 }} />Username</label>
+                <div className="mb-2">
+                  <label className="form-label"><User size={13} color="var(--accent-green)" style={{ marginRight: 6 }} />Username</label>
                   <input className="form-control" placeholder="h4ck3r_name" value={form.username}
-                    onChange={e => set('username', e.target.value)} autoComplete="username" />
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                    3–20 chars. Letters, numbers, underscores only.
-                  </div>
+                    onChange={e => set('username', e.target.value)} autoComplete="username" maxLength={20} />
+                  {usernameInvalid && (
+                    <div style={{ fontSize: '0.72rem', color: 'var(--accent-red)', marginTop: 4 }}>
+                      Letters, numbers, and underscores only.
+                    </div>
+                  )}
                 </div>
 
-                <div className="mb-3">
+                <div className="mb-2">
                   <label className="form-label"><Mail size={13} style={{ marginRight: 6 }} />Email Address</label>
                   <input className="form-control" type="email" placeholder="you@example.com" value={form.email}
                     onChange={e => set('email', e.target.value)} autoComplete="email" />
                 </div>
 
-                <div className="mb-3">
+                <div className="mb-2">
                   <label className="form-label"><Lock size={13} style={{ marginRight: 6 }} />Password</label>
                   <div style={{ position: 'relative' }}>
                     <input
@@ -128,11 +134,11 @@ export default function Register() {
                       position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
                       background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
                     }}>
-                      {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                      {showPw ? <EyeOff size={16} color="var(--accent-green)" /> : <Eye size={16} color="var(--accent-green)" />}
                     </button>
                   </div>
                   {form.password && (
-                    <div style={{ marginTop: 8 }}>
+                    <div style={{ marginTop: 6 }}>
                       <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
                         {[1,2,3,4].map(i => (
                           <div key={i} style={{
@@ -149,7 +155,7 @@ export default function Register() {
                   )}
                 </div>
 
-                <div className="mb-4">
+                <div className="mb-3">
                   <label className="form-label"><Lock size={13} style={{ marginRight: 6 }} />Confirm Password</label>
                   <input
                     className="form-control"
@@ -164,14 +170,14 @@ export default function Register() {
                   )}
                 </div>
 
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 20, lineHeight: 1.6 }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.6 }}>
                   By creating an account you agree to our{' '}
                   <a href="#" style={{ color: 'var(--accent-green)' }}>Terms of Service</a> and{' '}
                   <a href="#" style={{ color: 'var(--accent-green)' }}>Privacy Policy</a>.
                 </div>
 
                 <button className="btn btn-primary w-100" type="submit" disabled={loading}
-                  style={{ padding: '12px', fontSize: '0.9rem', letterSpacing: '0.05em' }}>
+                  style={{ padding: '11px', fontSize: '0.9rem', letterSpacing: '0.05em' }}>
                   {loading ? (
                     <span className="d-flex align-items-center justify-content-center gap-2">
                       <span style={{ width: 16, height: 16, border: '2px solid rgba(0,0,0,0.3)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
@@ -181,7 +187,7 @@ export default function Register() {
                 </button>
               </form>
 
-              <div className="text-center mt-4">
+              <div className="text-center mt-3">
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   Already have an account?{' '}
                   <Link to="/login" style={{ color: 'var(--accent-green)', fontWeight: 600 }}>Sign in</Link>

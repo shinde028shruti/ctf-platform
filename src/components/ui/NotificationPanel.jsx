@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, Trophy, Zap, Calendar, TrendingUp, Lightbulb, Bell } from 'lucide-react';
+import { CheckCircle, Trophy, Zap, Calendar, TrendingUp, Lightbulb, Bell, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 const iconMap = {
@@ -8,11 +8,11 @@ const iconMap = {
 
 const typeColors = {
   solve: 'var(--accent-green)',
-  achievement: '#ffd700',
+  achievement: 'var(--accent-green)',
   new_challenge: 'var(--accent-cyan)',
   event: 'var(--accent-green)',
   rank: 'var(--accent-purple)',
-  hint: 'var(--accent-yellow)',
+  hint: 'var(--accent-green)',
 };
 
 function timeAgo(ts) {
@@ -24,7 +24,7 @@ function timeAgo(ts) {
 }
 
 export default function NotificationPanel({ onClose }) {
-  const { notifications, markNotifRead, markAllNotifsRead } = useApp();
+  const { notifications, markNotifRead, clearAllNotifications } = useApp();
 
   return (
     <div className="notif-panel">
@@ -34,12 +34,14 @@ export default function NotificationPanel({ onClose }) {
         padding: '14px 16px', borderBottom: '1px solid var(--border-color)',
       }}>
         <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Notifications</span>
-        <button
-          onClick={markAllNotifsRead}
-          style={{ background: 'none', border: 'none', color: 'var(--accent-green)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}
-        >
-          Mark all read
-        </button>
+        {notifications.length > 0 && (
+          <button
+            onClick={() => clearAllNotifications()}
+            style={{ background: 'none', border: 'none', color: 'var(--accent-green)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <Trash2 size={12} /> Clear all
+          </button>
+        )}
       </div>
 
       {/* List */}

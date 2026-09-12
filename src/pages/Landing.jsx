@@ -49,20 +49,12 @@ export default function Landing() {
           ))}
         </div>
 
-        <div className="container py-5" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="container pt-4 pb-5" style={{ position: 'relative', zIndex: 1 }}>
           <div className="row align-items-center g-5">
             <div className="col-lg-6 animate-fade-in-up">
-              <div className="d-flex align-items-center gap-2 mb-4">
-                <span className="status-dot green" />
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--accent-green)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                  Platform Online · {challenges.length} Active Challenges
-                </span>
-              </div>
-              <h1 className="hero-title mb-4">
-                ENTER THE<br />CYBER ARENA
-              </h1>
+              <TypewriterHeading />
               <p className="hero-subtitle mb-5">
-                Think. Exploit. Capture the Flag.<br />
+                Every flag has a story.<br />
                 Test your cybersecurity skills through real-world inspired challenges — from web exploitation to kernel pwn.
               </p>
               <div className="d-flex flex-wrap gap-3">
@@ -117,7 +109,6 @@ export default function Landing() {
       <section style={{ background: 'var(--bg-secondary)', padding: '80px 0', borderTop: '1px solid var(--border-color)' }}>
         <div className="container">
           <div className="text-center mb-5">
-            <div className="section-title justify-content-center mb-3">How It Works</div>
             <h2 style={{ fontSize: '2rem', fontWeight: 800 }}>What is a CTF?</h2>
             <p style={{ color: 'var(--text-secondary)', maxWidth: 560, margin: '12px auto 0' }}>
               Capture The Flag (CTF) competitions are cybersecurity contests where participants solve hacking challenges to find hidden "flags" and earn points.
@@ -128,7 +119,7 @@ export default function Landing() {
               { num: '01', icon: Flag, color: 'var(--accent-green)', title: 'Choose a Challenge', desc: 'Browse challenges across 10 categories — from beginner-friendly web exploitation to advanced kernel exploitation.' },
               { num: '02', icon: TermIcon, color: 'var(--accent-cyan)', title: 'Hack & Investigate', desc: 'Use your skills to find vulnerabilities, decode secrets, analyze traffic, or reverse-engineer binaries.' },
               { num: '03', icon: Shield, color: 'var(--accent-purple)', title: 'Submit the Flag', desc: 'Hidden flags follow the format CTF{...}. Find them and submit to earn points. Use hints if you\'re stuck.' },
-              { num: '04', icon: Trophy, color: 'var(--accent-yellow)', title: 'Climb the Ranks', desc: 'Points accumulate on the global leaderboard. Compete in events for prizes and recognition.' },
+              { num: '04', icon: Trophy, color: 'var(--accent-green)', title: 'Climb the Ranks', desc: 'Points accumulate on the global leaderboard. Compete in events for prizes and recognition.' },
             ].map(({ num, icon: Icon, color, title, desc }) => (
               <div key={num} className="col-md-6 col-lg-3 animate-fade-in-up">
                 <div className="cf-card p-4 h-100 cf-card-glow">
@@ -155,7 +146,7 @@ export default function Landing() {
               <div className="section-title mb-2">Categories</div>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Challenge Categories</h2>
             </div>
-            <Link to="/challenges" className="btn btn-outline-primary btn-sm d-none d-md-flex align-items-center gap-1">
+            <Link to="/challenges" className="view-all-btn btn btn-outline-primary btn-sm d-none d-md-flex align-items-center gap-1">
               View All <ArrowRight size={14} />
             </Link>
           </div>
@@ -165,7 +156,7 @@ export default function Landing() {
               return (
                 <div key={cat.id} className="col-6 col-md-4 col-lg-3 animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
                   <Link to="/challenges" className="d-block text-decoration-none">
-                    <div className="cf-card p-3 h-100" style={{ borderLeft: `3px solid ${cat.color}` }}>
+                    <div className="cf-card p-3 h-100">
                       <div style={{ width: 36, height: 36, borderRadius: 8, background: `${cat.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cat.color, marginBottom: 10 }}>
                         <Flag size={18} />
                       </div>
@@ -223,32 +214,32 @@ export default function Landing() {
       {/* ── Leaderboard Preview ── */}
       <section style={{ padding: '80px 0' }}>
         <div className="container">
-          <div className="row g-5 align-items-start">
-            <div className="col-lg-6">
+          <div className="row g-5 align-items-stretch">
+            <div className="col-lg-6 d-flex flex-column">
               <div className="section-title mb-2">Leaderboard</div>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 8 }}>Top Hackers</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 28 }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 24 }}>
                 Compete against hackers worldwide. Every solved challenge earns points and improves your global ranking.
               </p>
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden', flex: 1 }}>
                 {topUsers.map((u, i) => (
                   <div key={u.id} style={{
-                    display: 'flex', alignItems: 'center', padding: '14px 20px',
+                    display: 'flex', alignItems: 'center', padding: '10px 16px',
                     borderBottom: i < topUsers.length - 1 ? '1px solid var(--border-color)' : 'none',
                     transition: 'background 0.15s',
                   }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-elevated)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    <span className={`lb-rank ${i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : ''}`} style={{ minWidth: 32 }}>
+                    <span className={`lb-rank ${i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : ''}`} style={{ minWidth: 24 }}>
                       #{u.rank}
                     </span>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700, color: '#071a1a', margin: '0 12px', flexShrink: 0 }}>
+                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.72rem', fontWeight: 700, color: '#071a1a', margin: '0 10px', flexShrink: 0 }}>
                       {u.username[0].toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.875rem' }}>{u.username}</div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.8rem' }}>{u.username}</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
                         {u.solved} solved
                       </div>
                     </div>
@@ -264,10 +255,10 @@ export default function Landing() {
             </div>
 
             {/* Upcoming Event */}
-            <div className="col-lg-6">
+            <div className="col-lg-6 d-flex flex-column">
               <div className="section-title mb-2">Events</div>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 8 }}>Upcoming Competition</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 28 }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 24 }}>
                 Participate in timed CTF events to compete for prizes and recognition.
               </p>
               {upcomingEvent && (
@@ -276,10 +267,11 @@ export default function Landing() {
                   border: '1px solid var(--border-color)',
                   borderRadius: 16, overflow: 'hidden',
                   position: 'relative',
+                  flex: 1,
                 }}>
                   <div style={{
                     background: 'linear-gradient(135deg, rgba(14,201,181,0.08) 0%, rgba(14,201,181,0.05) 100%)',
-                    padding: '28px',
+                    padding: '20px',
                     borderBottom: '1px solid var(--border-color)',
                   }}>
                     <div className="d-flex align-items-center gap-2 mb-3">
@@ -302,7 +294,7 @@ export default function Landing() {
                       { label: 'Participants', val: upcomingEvent.participants.toLocaleString() },
                       { label: 'Prize Pool', val: '$10,000' },
                     ].map(({ label, val }) => (
-                      <div key={label} className="col-6" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)' }}>
+                      <div key={label} className="col-6" style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)' }}>
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>{label}</div>
                         <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{val}</div>
                       </div>
@@ -348,6 +340,32 @@ export default function Landing() {
         </div>
       </section>
     </div>
+  );
+}
+
+function TypewriterHeading() {
+  const text = 'ENTER THE\nCYBER ARENA';
+  const [display, setDisplay] = useState('');
+  useEffect(() => {
+    let i = 0;
+    let timer;
+    const type = () => {
+      i += 1;
+      setDisplay(text.slice(0, i));
+      if (i < text.length) {
+        const ch = text[i - 1];
+        const pause = ch === '\n' ? 350 : ch === ' ' ? 160 : 70;
+        timer = setTimeout(type, pause);
+      }
+    };
+    timer = setTimeout(type, 300);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <h1 className="hero-title mb-4" style={{ whiteSpace: 'pre-line' }}>
+      {display}
+      {display.length < text.length && <span className="type-cursor">▍</span>}
+    </h1>
   );
 }
 

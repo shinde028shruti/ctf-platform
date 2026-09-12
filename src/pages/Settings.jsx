@@ -35,7 +35,7 @@ export default function Settings() {
   const { user, updateUser } = useApp();
   const [tab, setTab] = useState('profile');
 
-  const [profile, setProfile] = useState({ username: user?.username || '', bio: user?.bio || '', website: user?.website || '', twitter: user?.twitter || '' });
+  const [profile, setProfile] = useState({ username: user?.username || '', website: user?.website || '', twitter: user?.twitter || '' });
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [showPw, setShowPw] = useState(false);
   const [notifPrefs, setNotifPrefs] = useState({ solves: true, achievements: true, new_challenges: true, events: true, rank_changes: false });
@@ -83,7 +83,7 @@ export default function Settings() {
                 padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10,
                 fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
               }}>
-                <Icon size={16} /> {label}
+                <Icon size={16} color={icon === User ? 'var(--accent-green)' : undefined} /> {label}
               </button>
             ))}
           </div>
@@ -110,10 +110,6 @@ export default function Settings() {
                     <input className="form-control" value={user?.email || ''} disabled style={{ opacity: 0.6 }} />
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>Email cannot be changed here.</div>
                   </div>
-                  <div className="col-12">
-                    <label className="form-label">Bio</label>
-                    <textarea className="form-control" rows={3} placeholder="Tell the community about yourself..." value={profile.bio} onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))} />
-                  </div>
                   <div className="col-md-6">
                     <label className="form-label">Website</label>
                     <input className="form-control" placeholder="https://yoursite.com" value={profile.website} onChange={e => setProfile(p => ({ ...p, website: e.target.value }))} />
@@ -137,7 +133,7 @@ export default function Settings() {
                     <div style={{ position: 'relative' }}>
                       <input className="form-control" type={showPw ? 'text' : 'password'} value={pw.current} onChange={e => setPw(p => ({ ...p, current: e.target.value }))} style={{ paddingRight: 44 }} />
                       <button type="button" onClick={() => setShowPw(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                        {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showPw ? <EyeOff size={16} color="var(--accent-green)" /> : <Eye size={16} color="var(--accent-green)" />}
                       </button>
                     </div>
                   </div>

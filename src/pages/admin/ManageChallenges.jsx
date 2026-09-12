@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, MoreVertical, Edit, Eye, Copy, ToggleLeft, ToggleRight, Trash2, Search } from 'lucide-react';
+import { Plus, MoreVertical, Edit, Eye, Copy, ToggleLeft, ToggleRight, Trash2, Search, CheckCircle } from 'lucide-react';
 import { challengeService } from '../../services/challengeService';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
@@ -17,7 +17,7 @@ function ActionMenu({ challenge, onAction }) {
 
   const items = [
     { icon: Edit,        label: 'Edit',      action: 'edit',     className: '' },
-    { icon: Eye,         label: 'Preview',   action: 'preview',  className: '' },
+    { icon: Eye,         label: 'Preview',   action: 'preview',  className: '', color: 'var(--accent-green)' },
     { icon: Copy,        label: 'Duplicate', action: 'duplicate',className: '' },
     {
       icon: challenge.status === 'published' ? ToggleLeft : ToggleRight,
@@ -37,10 +37,10 @@ function ActionMenu({ challenge, onAction }) {
       </button>
       {open && (
         <div className="cf-dropdown" style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 100 }}>
-          {items.map(({ icon: Icon, label, action, className }) => (
+          {items.map(({ icon: Icon, label, action, className, color }) => (
             <button key={action} className={`cf-dropdown-item ${className}`}
               onClick={() => { onAction(challenge, action); setOpen(false); }}>
-              <Icon size={14} /> {label}
+              <Icon size={14} color={color} /> {label}
             </button>
           ))}
         </div>
@@ -127,7 +127,7 @@ export default function ManageChallenges() {
           color: 'var(--accent-green)', boxShadow: 'var(--shadow-lg)',
           animation: 'fadeInUp 0.3s ease',
         }}>
-          ✓ {toast}
+          <CheckCircle size={14} style={{ marginRight: 8 }} /> {toast}
         </div>
       )}
 

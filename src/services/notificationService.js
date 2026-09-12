@@ -52,6 +52,15 @@ export const notificationService = {
   },
 
   /**
+   * Clear all notifications.
+   * TODO: Replace with DELETE /api/notifications
+   */
+  async clearAll() {
+    save([]);
+    return [];
+  },
+
+  /**
    * Get unread count.
    * TODO: Replace with GET /api/notifications/unread-count
    */

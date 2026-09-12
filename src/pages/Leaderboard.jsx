@@ -1,25 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, TrendingUp, Flame, Target } from 'lucide-react';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import MedalIcon from '../components/ui/MedalIcon';
 import { leaderboardService } from '../services/leaderboardService';
 
 const TABS = ['Global', 'Weekly', 'Monthly', 'Event'];
-const flagEmoji = { US:'🇺🇸', DE:'🇩🇪', RU:'🇷🇺', CN:'🇨🇳', IN:'🇮🇳', GB:'🇬🇧', FR:'🇫🇷', JP:'🇯🇵', CA:'🇨🇦', BR:'🇧🇷', AU:'🇦🇺', NL:'🇳🇱', SE:'🇸🇪', PL:'🇵🇱', ES:'🇪🇸' };
 
 function Podium({ users }) {
   const [first, second, third] = users;
   const items = [
-    { user: second, pos: 2, height: 120, color: '#c0c0c0', medal: '🥈' },
-    { user: first,  pos: 1, height: 160, color: '#ffd700', medal: '🥇' },
-    { user: third,  pos: 3, height:  90, color: '#cd7f32', medal: '🥉' },
+    { user: second, pos: 2, height: 120, color: '#c0c0c0' },
+    { user: first,  pos: 1, height: 160, color: '#ffd700' },
+    { user: third,  pos: 3, height:  90, color: '#cd7f32' },
   ];
 
   return (
     <div className="podium-container animate-fade-in-up">
-      {items.map(({ user, pos, height, color, medal }) => user && (
+      {items.map(({ user, pos, height, color }) => user && (
         <div key={pos} className="podium-item">
           <div style={{ textAlign: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: '1.8rem', marginBottom: 4 }}>{medal}</div>
+            <div style={{ marginBottom: 4 }}><MedalIcon tier={pos} size={34} /></div>
             <div style={{
               width: 52, height: 52, borderRadius: '50%',
               background: `linear-gradient(135deg, ${color}40, ${color}20)`,
@@ -39,7 +39,7 @@ function Podium({ users }) {
           </div>
           <div className={`podium-pedestal podium-${pos}`} style={{ height, width: 110 }}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.8rem', fontWeight: 900, color }}>
-              #{pos}
+              {pos}
             </div>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function Leaderboard() {
                     <td>
                       <span className={`lb-rank ${i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : ''}`}>
                         {i < 3
-                          ? ['🥇','🥈','🥉'][i]
+                          ? <MedalIcon tier={i + 1} size={17} />
                           : `#${u.rank}`}
                       </span>
                     </td>
@@ -168,7 +168,7 @@ export default function Leaderboard() {
                             {u.username} {u.isCurrentUser && <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--accent-green)', opacity: 0.7 }}>(you)</span>}
                           </div>
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                            {flagEmoji[u.country] || '🌐'} {u.country}
+                            {u.country}
                           </div>
                         </div>
                       </div>
@@ -195,7 +195,7 @@ export default function Leaderboard() {
                     </td>
                     <td>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: u.streak >= 7 ? 'var(--accent-orange)' : 'var(--text-muted)' }}>
-                        {u.streak >= 7 ? '🔥' : ''} {u.streak}d
+                        {u.streak}d
                       </span>
                     </td>
                   </tr>

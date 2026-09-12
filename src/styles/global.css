@@ -35,7 +35,7 @@
   --border-accent:  rgba(14, 201, 181, 0.3);
 
   /* Difficulty colours */
-  --diff-easy:    #10b981;
+  --diff-easy:    #34d399;
   --diff-medium:  #f59e0b;
   --diff-hard:    #ef4444;
   --diff-insane:  #8b5cf6;
@@ -120,6 +120,19 @@ a:hover { color: var(--accent-cyan); }
 .btn { border-radius: 6px; font-weight: 600; transition: all var(--transition-normal); }
 
 .btn-primary {
+  --bs-btn-bg: var(--accent-green);
+  --bs-btn-border-color: var(--accent-green);
+  --bs-btn-color: #071a1a;
+  --bs-btn-hover-bg: var(--accent-cyan);
+  --bs-btn-hover-border-color: var(--accent-cyan);
+  --bs-btn-hover-color: #071a1a;
+  --bs-btn-focus-shadow-rgb: 14, 201, 181;
+  --bs-btn-active-bg: var(--accent-green-dim);
+  --bs-btn-active-border-color: var(--accent-green);
+  --bs-btn-active-color: #071a1a;
+  --bs-btn-disabled-bg: var(--accent-green);
+  --bs-btn-disabled-border-color: var(--accent-green);
+  --bs-btn-disabled-color: #071a1a;
   background: var(--accent-green);
   border: 1px solid var(--accent-green);
   color: #071a1a;
@@ -131,6 +144,13 @@ a:hover { color: var(--accent-cyan); }
   box-shadow: 0 0 20px rgba(14,201,181,0.35);
   color: #071a1a;
   transform: translateY(-1px);
+}
+.btn-primary:disabled,
+.btn-primary.disabled {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  color: #071a1a;
+  opacity: 0.8;
 }
 
 .btn-outline-primary {
@@ -231,6 +251,9 @@ a:hover { color: var(--accent-cyan); }
   height: 14px;
   background: var(--accent-green);
   border-radius: 2px;
+}
+.cf-footer .section-title::before {
+  content: none;
 }
 
 /* ── Difficulty Badges ──────────────────────────────────────── */
@@ -397,6 +420,27 @@ a:hover { color: var(--accent-cyan); }
 .delay-300 { animation-delay: 0.3s; }
 .delay-400 { animation-delay: 0.4s; }
 .delay-500 { animation-delay: 0.5s; }
+
+.type-cursor {
+  color: var(--accent-cyan);
+  animation: blink 0.8s step-end infinite;
+}
+
+.view-all-btn {
+  transition: all var(--transition-fast);
+}
+.view-all-btn svg {
+  transition: transform var(--transition-fast);
+}
+.view-all-btn:hover svg {
+  transform: translateX(4px);
+}
+.view-all-btn:hover {
+  border-color: var(--accent-green) !important;
+  color: var(--accent-green) !important;
+  box-shadow: var(--glow-green);
+  transform: translateY(-1px);
+}
 
 /* ── Progress Bars ──────────────────────────────────────────── */
 .cf-progress {
@@ -573,6 +617,7 @@ a:hover { color: var(--accent-cyan); }
   padding: 20px 24px;
   position: relative;
   overflow: hidden;
+  height: 100%;
   transition: all var(--transition-normal);
 }
 .stat-card:hover {
@@ -887,7 +932,9 @@ a:hover { color: var(--accent-cyan); }
   align-items: center;
   justify-content: center;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 48px 0;
 }
 .auth-bg {
   position: absolute;
@@ -922,10 +969,10 @@ a:hover { color: var(--accent-cyan); }
 .hero-section {
   min-height: calc(100vh - var(--navbar-height));
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   position: relative;
   overflow: hidden;
-  padding: 80px 0;
+  padding: 40px 0 80px;
 }
 .hero-bg {
   position: absolute;

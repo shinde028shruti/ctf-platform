@@ -92,7 +92,7 @@ export default function Challenges() {
         Object.entries(grouped).map(([diff, group]) => (
           <div key={diff} className="mb-5">
             <div className="d-flex align-items-center gap-3 mb-3">
-              <span className={`diff-badge diff-${diff.toLowerCase()}`} style={{ fontSize: '0.75rem', padding: '4px 14px' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: diff === 'Easy' ? '#8bbb92' : `var(--diff-${diff.toLowerCase()})` }}>
                 {diff}
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>

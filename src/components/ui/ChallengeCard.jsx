@@ -2,8 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Users, Tag } from 'lucide-react';
 
-const diffClass = { Easy: 'diff-easy', Medium: 'diff-medium', Hard: 'diff-hard', Insane: 'diff-insane' };
-
 export default function ChallengeCard({ challenge, index = 0 }) {
   const navigate = useNavigate();
 
@@ -19,8 +17,10 @@ export default function ChallengeCard({ challenge, index = 0 }) {
       <div className="challenge-card-header">
         <div>
           <div className="d-flex align-items-center gap-2 mb-2">
-            <span className="cat-chip">{challenge.category}</span>
-            <span className={`diff-badge ${diffClass[challenge.difficulty] || 'diff-easy'}`}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--accent-green)' }}>
+              {challenge.category}
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: challenge.difficulty === 'Easy' ? '#8bbb92' : `var(--diff-${challenge.difficulty.toLowerCase()})` }}>
               {challenge.difficulty}
             </span>
           </div>

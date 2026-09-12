@@ -1,16 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NavLink, useNavigate, Link } from 'react-router-dom';
-import { Search, Bell, Shield, Menu, X, ChevronDown, LogOut, User, Settings, LayoutDashboard } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Bell, Shield, LogOut, User, Settings, LayoutDashboard } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import NotificationPanel from '../ui/NotificationPanel';
-import SearchOverlay from '../ui/SearchOverlay';
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useApp();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const notifRef = useRef(null);
   const profileRef = useRef(null);
@@ -24,26 +21,12 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  useEffect(() => {
-    const handler = (e) => { if (e.key === 'k' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setSearchOpen(true); } };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
-
   const { unreadCount } = useApp();
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
-
-  const navLinks = [
-    { to: '/dashboard', label: 'Dashboard' },
-    { to: '/challenges', label: 'Challenges' },
-    { to: '/leaderboard', label: 'Leaderboard' },
-    { to: '/events', label: 'Events' },
-    { to: '/about', label: 'About' },
-  ];
 
   return (
     <>
@@ -67,25 +50,8 @@ export default function Navbar() {
           <span className="brand-name d-none d-sm-block">CyberForge</span>
         </Link>
 
-        {/* Desktop Nav */}
-        {isAuthenticated && (
-          <div className="d-none d-lg-flex align-items-center gap-1 me-auto">
-            {navLinks.map(l => (
-              <NavLink key={l.to} to={l.to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                {l.label}
-              </NavLink>
-            ))}
-          </div>
-        )}
-        {!isAuthenticated && <div className="me-auto" />}
-
         {/* Right actions */}
-        <div className="d-flex align-items-center gap-2 ms-auto ms-lg-0">
-          {/* Search */}
-          <button className="icon-btn" onClick={() => setSearchOpen(true)} title="Search (Ctrl+K)">
-            <Search size={16} />
-          </button>
-
+        <div className="d-flex align-items-center gap-2 ms-auto">
           {isAuthenticated ? (
             <>
               {/* Notifications */}
@@ -112,7 +78,7 @@ export default function Navbar() {
                       <div style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontFamily: 'var(--font-mono)' }}>{user?.points?.toLocaleString()} pts</div>
                     </div>
                     <button className="cf-dropdown-item" onClick={() => { navigate('/profile'); setProfileOpen(false); }}>
-                      <User size={14} /> Profile
+                      <User size={14} color="var(--accent-green)" /> Profile
                     </button>
                     <button className="cf-dropdown-item" onClick={() => { navigate('/dashboard'); setProfileOpen(false); }}>
                       <LayoutDashboard size={14} /> Dashboard
@@ -134,10 +100,6 @@ export default function Navbar() {
                 )}
               </div>
 
-              {/* Mobile hamburger */}
-              <button className="icon-btn d-lg-none" onClick={() => setMenuOpen(o => !o)}>
-                {menuOpen ? <X size={16} /> : <Menu size={16} />}
-              </button>
             </>
           ) : (
             <div className="d-flex gap-2">
@@ -147,29 +109,6 @@ export default function Navbar() {
           )}
         </div>
       </nav>
-
-      {/* Mobile menu */}
-      {isAuthenticated && menuOpen && (
-        <div style={{
-          background: 'var(--bg-secondary)',
-          borderBottom: '1px solid var(--border-color)',
-          padding: '12px 16px',
-          position: 'sticky', top: 64, zIndex: 999
-        }}>
-          {navLinks.map(l => (
-            <NavLink
-              key={l.to} to={l.to}
-              className={({ isActive }) => `d-block py-2 px-3 mb-1 rounded text-decoration-none ${isActive ? 'text-accent' : ''}`}
-              style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}
-              onClick={() => setMenuOpen(false)}
-            >
-              {l.label}
-            </NavLink>
-          ))}
-        </div>
-      )}
-
-      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
     </>
   );
 }

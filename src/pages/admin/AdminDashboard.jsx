@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Flag, Users, CheckCircle, FileText, TrendingUp, Plus, Eye } from 'lucide-react';
+import { Flag, Users, Plus, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { challengeService } from '../../services/challengeService';
 
@@ -20,11 +20,11 @@ export default function AdminDashboard() {
   const totalSolves = challenges.reduce((s, c) => s + (c.solves || 0), 0);
 
   const stats = [
-    { icon: Flag,        color: 'var(--accent-green)',  label: 'Total Challenges', value: challenges.length },
-    { icon: CheckCircle, color: 'var(--diff-easy)',      label: 'Published',        value: published },
-    { icon: FileText,    color: 'var(--accent-yellow)',  label: 'Drafts',           value: drafts },
-    { icon: TrendingUp,  color: 'var(--accent-cyan)',    label: 'Total Solves',     value: totalSolves.toLocaleString() },
-    { icon: Users,       color: 'var(--accent-green)',    label: 'Registered Users', value: 4820 },
+    { label: 'Total Challenges', value: challenges.length },
+    { label: 'Published',        value: published },
+    { label: 'Drafts',           value: drafts },
+    { label: 'Total Solves',     value: totalSolves.toLocaleString() },
+    { label: 'Registered Users', value: 4820 },
   ];
 
   const recent = [...challenges].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
@@ -36,19 +36,13 @@ export default function AdminDashboard() {
           <div className="section-title mb-1">Admin</div>
           <h1 style={{ margin: 0 }}>Dashboard</h1>
         </div>
-        <Link to="/admin/challenges/new" className="btn btn-primary d-flex align-items-center gap-2">
-          <Plus size={16} /> New Challenge
-        </Link>
       </div>
 
       {/* Stats */}
       <div className="row g-3 mb-4">
-        {stats.map(({ icon: Icon, color, label, value }) => (
+        {stats.map(({ label, value }) => (
           <div key={label} className="col-6 col-md-4 col-lg">
             <div className="stat-card">
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, marginBottom: 12 }}>
-                <Icon size={18} />
-              </div>
               <div className="stat-value">{value}</div>
               <div className="stat-label">{label}</div>
             </div>
@@ -62,7 +56,7 @@ export default function AdminDashboard() {
           { to: '/admin/challenges/new',  label: 'Create Challenge', icon: Plus,      color: 'var(--accent-green)' },
           { to: '/admin/challenges',      label: 'Manage Challenges', icon: Flag,     color: 'var(--accent-cyan)' },
           { to: '/admin/users',           label: 'View Users',       icon: Users,     color: 'var(--accent-green)' },
-          { to: '/challenges',            label: 'View Platform',    icon: Eye,       color: 'var(--accent-purple)' },
+          { to: '/challenges',            label: 'View Platform',    icon: Eye,       color: 'var(--accent-green)' },
         ].map(({ to, label, icon: Icon, color }) => (
           <div key={to} className="col-6 col-md-3">
             <Link to={to} className="text-decoration-none">

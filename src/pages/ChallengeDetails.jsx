@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Flag, Users, CheckCircle, XCircle, Download,
-  ExternalLink, Copy, ChevronRight, Tag, Clock, User, Globe
+  ExternalLink, Copy, ChevronRight, Tag, Clock, User, Globe,
+  File, FileText, FileCode, FileImage, FileTerminal, Package, Smartphone, Activity
 } from 'lucide-react';
 import HintCard from '../components/ui/HintCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -12,8 +13,8 @@ import { useApp } from '../context/AppContext';
 const diffClass = { Easy: 'diff-easy', Medium: 'diff-medium', Hard: 'diff-hard', Insane: 'diff-insane' };
 
 const fileIcons = {
-  zip: '📦', txt: '📄', pdf: '📑', png: '🖼', jpg: '🖼', py: '🐍',
-  c: '⚙', binary: '⚙', pcap: '📡', apk: '📱', default: '📄',
+  zip: Package, txt: FileText, pdf: FileText, png: FileImage, jpg: FileImage, py: FileCode,
+  c: FileCode, binary: FileTerminal, pcap: Activity, apk: Smartphone, default: File,
 };
 
 export default function ChallengeDetails() {
@@ -79,7 +80,7 @@ export default function ChallengeDetails() {
     <div className="page-container">
       {/* Back */}
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => navigate('/challenges')}
         className="d-flex align-items-center gap-2 mb-4"
         style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.875rem', padding: 0 }}
       >
@@ -126,7 +127,7 @@ export default function ChallengeDetails() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(139,92,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <User size={16} color="var(--accent-purple)" />
+                  <User size={16} color="var(--accent-green)" />
                 </div>
                 <div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>{challenge.author}</div>
@@ -227,7 +228,7 @@ export default function ChallengeDetails() {
                   <div className="d-flex flex-column gap-2">
                     {challenge.files?.map((f, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', background: 'var(--bg-secondary)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
-                        <span style={{ fontSize: '1.4rem' }}>{fileIcons[f.type] || fileIcons.default}</span>
+                        <span style={{ display: 'inline-flex' }}>{(() => { const Icon = fileIcons[f.type] || fileIcons.default; return <Icon size={22} color="var(--text-muted)" />; })()}</span>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>{f.name}</div>
                           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{f.size}</div>

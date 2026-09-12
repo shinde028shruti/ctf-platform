@@ -60,11 +60,15 @@ function AppRoutes() {
       {/* Landing + public pages (with navbar, no sidebar) */}
       <Route element={<AppLayout showSidebar={false} />}>
         <Route path="/"     element={<Landing />} />
+      </Route>
+
+      {/* About — with sidebar */}
+      <Route element={<AppLayout showSidebar={true} />}>
         <Route path="/about" element={<About />} />
       </Route>
 
       {/* Leaderboard / Events — accessible without login */}
-      <Route element={<AppLayout showSidebar={false} />}>
+      <Route element={<AppLayout showSidebar={true} />}>
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/events"      element={<Events />} />
       </Route>

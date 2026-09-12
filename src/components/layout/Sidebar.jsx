@@ -9,13 +9,13 @@ import { useApp } from '../../context/AppContext';
 const navItems = [
   { to: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/challenges',  icon: Flag,            label: 'Challenges' },
-  { to: '/leaderboard', icon: Trophy,          label: 'Leaderboard' },
+  { to: '/leaderboard', icon: Trophy,          label: 'Leaderboard', color: 'var(--accent-green)' },
   { to: '/events',      icon: Calendar,        label: 'Events' },
   { to: '/about',       icon: Info,            label: 'About' },
 ];
 
 const accountItems = [
-  { to: '/profile',  icon: User,     label: 'Profile' },
+  { to: '/profile',  icon: User,     label: 'Profile', color: 'var(--accent-green)' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
@@ -25,23 +25,23 @@ export default function Sidebar() {
   return (
     <aside className="cf-sidebar d-none d-lg-flex flex-column">
       <div className="sidebar-section-label">Navigation</div>
-      {navItems.map(({ to, icon: Icon, label }) => (
+      {navItems.map(({ to, icon: Icon, label, color }) => (
         <NavLink
           key={to} to={to}
           className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
         >
-          <Icon size={16} />
+          <Icon size={16} color={color} />
           <span>{label}</span>
         </NavLink>
       ))}
 
       <div className="sidebar-section-label mt-2">Account</div>
-      {accountItems.map(({ to, icon: Icon, label }) => (
+      {accountItems.map(({ to, icon: Icon, label, color }) => (
         <NavLink
           key={to} to={to}
           className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
         >
-          <Icon size={16} />
+          <Icon size={16} color={color} />
           <span>{label}</span>
         </NavLink>
       ))}

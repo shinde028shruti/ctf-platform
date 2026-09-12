@@ -30,7 +30,7 @@ export default function About() {
         {[
           { icon: Flag,    color: 'var(--accent-green)',  title: 'Jeopardy-Style CTF',       desc: 'Our challenges follow the Jeopardy format — solve problems across categories to earn points. No attack/defense complexity.' },
           { icon: Globe,   color: 'var(--accent-cyan)',   title: 'Real-World Scenarios',     desc: 'Challenges are modeled after real vulnerability classes seen in production environments and bug bounty programs.' },
-          { icon: Trophy,  color: '#ffd700',              title: 'Competitive Events',       desc: 'Participate in timed events to compete for prizes and recognition on the global stage.' },
+          { icon: Trophy,  color: 'var(--accent-green)',              title: 'Competitive Events',       desc: 'Participate in timed events to compete for prizes and recognition on the global stage.' },
           { icon: Users,   color: 'var(--accent-green)',   title: 'Community Driven',         desc: 'Challenges authored by security professionals and experienced CTF players from around the world.' },
         ].map(({ icon: Icon, color, title, desc }) => (
           <div key={title} className="col-md-6 animate-fade-in-up">

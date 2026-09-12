@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, Trash2, Upload, CheckCircle, Globe, Server } from 'lucide-react';
+import { Plus, Trash2, Upload, CheckCircle, Globe, Server, File } from 'lucide-react';
 import { challengeService } from '../../services/challengeService';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
@@ -324,7 +324,7 @@ export default function CreateChallenge() {
                 <div className="d-flex flex-column gap-2">
                   {mockFiles.map((f, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8 }}>
-                      <span style={{ fontSize: '1.2rem' }}>📄</span>
+                      <File size={18} color="var(--text-muted)" />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 600 }}>{f.name}</div>
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{f.size}</div>
@@ -416,6 +416,9 @@ export default function CreateChallenge() {
             ) : (
               <><CheckCircle size={16} /> {isEdit ? 'Update & Publish' : 'Publish Challenge'}</>
             )}
+          </button>
+          <button className="btn btn-outline-secondary d-flex align-items-center gap-2" onClick={() => navigate('/admin/challenges')}>
+            Cancel
           </button>
         </div>
       </div>

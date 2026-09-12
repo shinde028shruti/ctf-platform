@@ -68,6 +68,18 @@ export const authService = {
    * Logout current user.
    * TODO: Replace with POST /api/auth/logout (invalidate token)
    */
+  async googleLogin() {
+    await delay();
+    const profile = { ...currentUser, id: 9001, username: 'google_user', email: 'user@gmail.com', role: 'user' };
+    localStorage.setItem(AUTH_KEY, 'true');
+    localStorage.setItem(USER_KEY, JSON.stringify(profile));
+    return profile;
+  },
+
+  /**
+   * Logout current user.
+   * TODO: Replace with POST /api/auth/logout (invalidate token)
+   */
   async logout() {
     await delay(200);
     localStorage.removeItem(AUTH_KEY);

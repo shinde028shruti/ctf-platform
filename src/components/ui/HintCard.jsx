@@ -29,7 +29,7 @@ export default function HintCard({ hint, challengeId, index }) {
       <div className="hint-header" onClick={() => revealed && setOpen(o => !o)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {revealed
-            ? <Lightbulb size={16} color="var(--accent-yellow)" />
+            ? <Lightbulb size={16} color="var(--accent-green)" />
             : <Lock size={16} color="var(--text-muted)" />
           }
           <span style={{ fontWeight: 600, fontSize: '0.875rem', color: revealed ? 'var(--text-primary)' : 'var(--text-secondary)' }}>

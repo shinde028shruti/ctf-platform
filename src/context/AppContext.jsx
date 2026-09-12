@@ -43,6 +43,14 @@ export function AppProvider({ children }) {
     return u;
   };
 
+  const googleLogin = async () => {
+    const u = await authService.googleLogin();
+    setUser(u);
+    setIsAuthenticated(true);
+    await loadNotifications();
+    return u;
+  };
+
   const logout = async () => {
     await authService.logout();
     setUser(null);
@@ -71,6 +79,12 @@ export function AppProvider({ children }) {
     setUnreadCount(0);
   };
 
+  const clearAllNotifications = async () => {
+    await notificationService.clearAll();
+    setNotifications([]);
+    setUnreadCount(0);
+  };
+
   const addPoints = useCallback((pts) => {
     setUser(prev => {
       if (!prev) return prev;
@@ -84,8 +98,8 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       user, isAuthenticated, loading,
       notifications, unreadCount,
-      login, register, logout, updateUser, addPoints,
-      markNotifRead, markAllNotifsRead, loadNotifications,
+      login, register, googleLogin, logout, updateUser, addPoints,
+      markNotifRead, markAllNotifsRead, clearAllNotifications, loadNotifications,
     }}>
       {children}
     </AppContext.Provider>
