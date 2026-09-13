@@ -7,6 +7,28 @@ import { events } from '../data/events';
 
 const catIconMap = { Globe, Lock, Cpu, Search, Eye, Network, Terminal: TermIcon, Smartphone, Image, Puzzle };
 
+function TypewriterText({ text, speed = 90, startDelay = 600 }) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let i = 0;
+    let interval;
+    const timeout = setTimeout(() => {
+      interval = setInterval(() => {
+        i += 1;
+        setCount(i);
+        if (i >= text.length) clearInterval(interval);
+      }, speed);
+    }, startDelay);
+    return () => { clearTimeout(timeout); clearInterval(interval); };
+  }, [text, speed, startDelay]);
+  return (
+    <>
+      {text.slice(0, count)}
+      <span className="terminal-cursor" style={{ width: 6, height: 12, verticalAlign: 'middle', marginLeft: 3, position: 'relative', bottom: 1.5 }} />
+    </>
+  );
+}
+
 function AnimatedCounter({ target, suffix = '' }) {
   const [val, setVal] = useState(0);
   useEffect(() => {
@@ -52,7 +74,15 @@ export default function Landing() {
         <div className="container pt-4 pb-5" style={{ position: 'relative', zIndex: 1 }}>
           <div className="row align-items-center g-5">
             <div className="col-lg-6 animate-fade-in-up">
-              <TypewriterHeading />
+              <div className="d-flex align-items-center gap-2 mb-4">
+                <span className="status-dot green" />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--accent-green)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  <TypewriterText text="Platform Online" />
+                </span>
+              </div>
+              <h1 className="hero-title mb-4">
+                ENTER THE<br />CYBER ARENA
+              </h1>
               <p className="hero-subtitle mb-5">
                 Every flag has a story.<br />
                 Test your cybersecurity skills through real-world inspired challenges — from web exploitation to kernel pwn.
@@ -101,6 +131,40 @@ export default function Landing() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── About CyberForge ── */}
+      <section style={{ background: 'var(--bg-secondary)', padding: '80px 0', borderTop: '1px solid var(--border-color)' }}>
+        <div className="container">
+          <div className="text-center mb-5">
+            <div className="section-title mb-2">About Us</div>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Built by Hackers, for Hackers</h2>
+            <p style={{ color: 'var(--text-secondary)', maxWidth: 620, margin: '12px auto 0', lineHeight: 1.7 }}>
+              CyberForge CTF is a professional cybersecurity training and competition platform designed for learners
+              at every level — from complete beginners to seasoned security researchers. Every flag you capture
+              represents a real skill learned.
+            </p>
+          </div>
+
+          <div className="row g-4">
+            {[
+              { icon: Flag,    color: 'var(--accent-green)',  title: 'Jeopardy-Style CTF',   desc: 'Our challenges follow the Jeopardy format — solve problems across categories to earn points. No attack/defense complexity.' },
+              { icon: Globe,   color: 'var(--accent-cyan)',   title: 'Real-World Scenarios', desc: 'Challenges are modeled after real vulnerability classes seen in production environments and bug bounty programs.' },
+              { icon: Trophy,  color: 'var(--accent-yellow)', title: 'Competitive Events',   desc: 'Participate in timed events to compete for prizes and recognition on the global stage.' },
+              { icon: Users,   color: 'var(--accent-purple)', title: 'Community Driven',     desc: 'Challenges authored by security professionals and experienced CTF players from around the world.' },
+            ].map(({ icon: Icon, color, title, desc }, i) => (
+              <div key={title} className="col-md-6 col-lg-3 animate-fade-in-up" style={{ animationDelay: `${i * 0.06}s` }}>
+                <div className="cf-card p-4 h-100">
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, marginBottom: 14 }}>
+                    <Icon size={20} />
+                  </div>
+                  <h5 style={{ fontWeight: 700, marginBottom: 8 }}>{title}</h5>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.7 }}>{desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -340,32 +404,6 @@ export default function Landing() {
         </div>
       </section>
     </div>
-  );
-}
-
-function TypewriterHeading() {
-  const text = 'ENTER THE\nCYBER ARENA';
-  const [display, setDisplay] = useState('');
-  useEffect(() => {
-    let i = 0;
-    let timer;
-    const type = () => {
-      i += 1;
-      setDisplay(text.slice(0, i));
-      if (i < text.length) {
-        const ch = text[i - 1];
-        const pause = ch === '\n' ? 350 : ch === ' ' ? 160 : 70;
-        timer = setTimeout(type, pause);
-      }
-    };
-    timer = setTimeout(type, 300);
-    return () => clearTimeout(timer);
-  }, []);
-  return (
-    <h1 className="hero-title mb-4" style={{ whiteSpace: 'pre-line' }}>
-      {display}
-      {display.length < text.length && <span className="type-cursor">▍</span>}
-    </h1>
   );
 }
 
