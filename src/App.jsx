@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
 import { AppProvider, useApp } from './context/AppContext';
 
 // Layout
@@ -18,6 +19,7 @@ import Dashboard        from './pages/Dashboard';
 import Challenges       from './pages/Challenges';
 import ChallengeDetails from './pages/ChallengeDetails';
 import Leaderboard      from './pages/Leaderboard';
+import Achievements     from './pages/Achievements';
 import Events           from './pages/Events';
 import Profile          from './pages/Profile';
 import Settings         from './pages/Settings';
@@ -78,6 +80,7 @@ function AppRoutes() {
         <Route path="/dashboard"         element={<Dashboard />} />
         <Route path="/challenges"        element={<Challenges />} />
         <Route path="/challenges/:id"    element={<ChallengeDetails />} />
+        <Route path="/achievements"      element={<Achievements />} />
         <Route path="/profile"           element={<Profile />} />
         <Route path="/settings"          element={<Settings />} />
       </Route>
@@ -108,6 +111,23 @@ export default function App() {
     <BrowserRouter>
       <AppProvider>
         <AppRoutes />
+        <ToastContainer
+          position="top-right"
+          autoClose={3500}
+          newestOnTop
+          closeOnClick
+          pauseOnHover
+          pauseOnFocusLoss={false}
+          theme="dark"
+          toastStyle={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-bright)',
+            borderRadius: '10px',
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '0.85rem',
+          }}
+        />
       </AppProvider>
     </BrowserRouter>
   );

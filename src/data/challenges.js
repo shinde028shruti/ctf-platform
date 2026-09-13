@@ -546,6 +546,32 @@ export const challenges = [
     status: 'published',
     featured: false,
   },
+  {
+    id: 19,
+    title: 'Trial Ground',
+    category: 'Miscellaneous',
+    difficulty: 'Easy',
+    points: 0,
+    description: 'A practice arena for experimenting with flag submissions. Submit the flag as many times as you like — this challenge resets every time you load it.',
+    scenario: 'This sandbox challenge exists purely for training. Nothing you do here affects your real score.',
+    objectives: [
+      'Submit the example flag',
+      'Experiment freely — refresh the page and the challenge resets',
+    ],
+    instructions: 'Enter the flag CTF{tr14l_gr0und_0p3n} to see the completion popup. After refreshing, you can submit it again and again.',
+    author: 'CyberForge Team',
+    tags: ['trial', 'practice', 'warmup', 'misc'],
+    solves: 0,
+    solved: false,
+    flag: 'CTF{tr14l_gr0und_0p3n}',
+    hints: [],
+    files: [],
+    connectionInfo: null,
+    createdAt: '2026-09-13',
+    status: 'published',
+    featured: false,
+    trial: true,
+  },
 ];
 
 export const categories = [

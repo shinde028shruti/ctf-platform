@@ -1,16 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Bell, Shield, LogOut, User, Settings, LayoutDashboard } from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { Bell, Shield, LogOut, User, Settings, LayoutDashboard, Menu, Search, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import NotificationPanel from '../ui/NotificationPanel';
+import UniversalSearch from '../ui/UniversalSearch';
+import Sidebar from './Sidebar';
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const notifRef = useRef(null);
   const profileRef = useRef(null);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+    setSearchOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     function handler(e) {
@@ -21,7 +31,13 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    document.body.style.overflow = mobileNavOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileNavOpen]);
+
   const { unreadCount } = useApp();
+  const isLanding = location.pathname === '/';
 
   const handleLogout = async () => {
     await logout();
@@ -31,6 +47,16 @@ export default function Navbar() {
   return (
     <>
       <nav className="cf-navbar d-flex align-items-center px-3 px-lg-4">
+        {/* Mobile hamburger */}
+        <button
+          className="icon-btn d-lg-none me-2"
+          aria-label="Open navigation menu"
+          onClick={() => setMobileNavOpen(o => !o)}
+          style={{ flexShrink: 0 }}
+        >
+          {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+        </button>
+
         {/* Brand */}
         <Link to={isAuthenticated ? '/dashboard' : '/'} className="d-flex align-items-center gap-2 me-4 text-decoration-none">
           <div style={{ width: 32, height: 32 }}>
@@ -50,8 +76,22 @@ export default function Navbar() {
           <span className="brand-name d-none d-sm-block">CyberForge</span>
         </Link>
 
+        {/* Universal search (desktop) */}
+        {!isLanding && <UniversalSearch />}
+
         {/* Right actions */}
         <div className="d-flex align-items-center gap-2 ms-auto">
+          {/* Mobile search toggle */}
+          {!isLanding && (
+            <button
+              className="icon-btn d-md-none"
+              aria-label="Toggle search"
+              onClick={() => setSearchOpen(o => !o)}
+            >
+              {searchOpen ? <X size={16} /> : <Search size={16} />}
+            </button>
+          )}
+
           {isAuthenticated ? (
             <>
               {/* Notifications */}
@@ -109,6 +149,23 @@ export default function Navbar() {
           )}
         </div>
       </nav>
+
+      {/* Mobile search bar */}
+      {!isLanding && searchOpen && (
+        <div className="cf-mobile-search">
+          <UniversalSearch mobile onNavigate={() => setSearchOpen(false)} />
+        </div>
+      )}
+
+      {/* Mobile sidebar drawer */}
+      {mobileNavOpen && (
+        <>
+          <div className="mobile-backdrop d-lg-none" onClick={() => setMobileNavOpen(false)} />
+          <div className="mobile-drawer d-lg-none">
+            <Sidebar />
+          </div>
+        </>
+      )}
     </>
   );
 }

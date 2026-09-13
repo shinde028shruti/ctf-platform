@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { User, Lock, Bell, Shield, Trash2, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { User, Lock, Bell, Trash2, Eye, EyeOff, Save } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { authService } from '../services/authService';
 
@@ -8,6 +9,22 @@ const TABS = [
   { id: 'security',  icon: Lock,   label: 'Security' },
   { id: 'notif',     icon: Bell,   label: 'Notifications' },
   { id: 'danger',    icon: Trash2, label: 'Danger Zone' },
+];
+
+const NOTIF_DEFAULTS = {
+  solves: true,
+  achievements: true,
+  new_challenges: true,
+  events: true,
+  rank_changes: false,
+};
+
+const NOTIF_ITEMS = [
+  { key: 'solves',         label: 'Challenge Solved',   desc: 'When you successfully submit a correct flag.' },
+  { key: 'achievements',   label: 'Achievements',       desc: 'When you unlock a new badge or achievement.' },
+  { key: 'new_challenges', label: 'New Challenges',     desc: 'When new challenges are added to the platform.' },
+  { key: 'events',         label: 'Events',             desc: 'CTF event announcements and reminders.' },
+  { key: 'rank_changes',   label: 'Rank Changes',       desc: 'When your global rank changes significantly.' },
 ];
 
 function Section({ title, children }) {
@@ -19,56 +36,78 @@ function Section({ title, children }) {
   );
 }
 
-function SaveBtn({ saving, saved, onClick }) {
-  return (
-    <button className="btn btn-primary d-flex align-items-center gap-2" onClick={onClick} disabled={saving} style={{ minWidth: 120 }}>
-      {saving ? (
-        <><span style={{ width: 14, height: 14, border: '2px solid rgba(0,0,0,0.3)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} /> Saving...</>
-      ) : saved ? (
-        <><CheckCircle size={14} /> Saved</>
-      ) : 'Save Changes'}
-    </button>
-  );
-}
-
 export default function Settings() {
-  const { user, updateUser } = useApp();
+  const { user, updateUser, logout } = useApp();
+
   const [tab, setTab] = useState('profile');
 
-  const [profile, setProfile] = useState({ username: user?.username || '', website: user?.website || '', twitter: user?.twitter || '' });
+  const [profile, setProfile] = useState({
+    displayName: user?.displayName || user?.username || '',
+    bio: user?.bio || '',
+    website: user?.website || '',
+    twitter: user?.twitter || '',
+  });
+
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [showPw, setShowPw] = useState(false);
-  const [notifPrefs, setNotifPrefs] = useState({ solves: true, achievements: true, new_challenges: true, events: true, rank_changes: false });
 
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
+  const [notifPrefs, setNotifPrefs] = useState({ ...NOTIF_DEFAULTS, ...(user?.notifPrefs || {}) });
 
-  const save = async (fn) => {
-    setSaving(true); setError(''); setSaved(false);
-    try { await fn(); setSaved(true); setTimeout(() => setSaved(false), 3000); }
-    catch (e) { setError(e.message); }
-    setSaving(false);
+  const [busy, setBusy] = useState(null); // 'profile' | 'security' | 'notif'
+
+  const saveProfile = async () => {
+    if (!profile.displayName.trim()) { toast.error('Display name cannot be empty.'); return; }
+    setBusy('profile');
+    try {
+      const updated = await authService.updateProfile({
+        displayName: profile.displayName.trim(),
+        bio: profile.bio,
+        website: profile.website,
+        twitter: profile.twitter,
+      });
+      updateUser(updated);
+      toast.success('Profile saved successfully.');
+    } catch (e) {
+      toast.error(e.message);
+    }
+    setBusy(null);
   };
 
-  const saveProfile = () => save(async () => {
-    const updated = await authService.updateProfile(profile);
-    updateUser(updated);
-  });
-
-  const savePassword = () => save(async () => {
-    if (!pw.current) throw new Error('Enter your current password.');
-    if (pw.next.length < 6) throw new Error('New password must be at least 6 characters.');
-    if (pw.next !== pw.confirm) throw new Error('Passwords do not match.');
-    await new Promise(r => setTimeout(r, 600)); // mock
+  const savePassword = async () => {
+    if (!pw.current) { toast.error('Enter your current password.'); return; }
+    if (pw.next.length < 6) { toast.error('New password must be at least 6 characters.'); return; }
+    if (pw.next !== pw.confirm) { toast.error('New passwords do not match.'); return; }
+    setBusy('security');
+    await new Promise(r => setTimeout(r, 600));
     setPw({ current: '', next: '', confirm: '' });
-  });
+    toast.success('Password changed successfully.');
+    setBusy(null);
+  };
+
+  const saveNotifs = () => {
+    setBusy('notif');
+    setTimeout(() => {
+      updateUser({ notifPrefs });
+      toast.success('Notification preferences saved.');
+      setBusy(null);
+    }, 400);
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Permanently delete your account? This action cannot be undone.')) return;
+    if (!window.confirm('This is a demo environment. In production this would wipe all your data. Continue?')) return;
+    await logout();
+    window.location.href = '/';
+  };
 
   return (
     <div className="page-container">
       <div className="page-header animate-fade-in-up">
         <div className="section-title mb-2">Account</div>
         <h1 style={{ margin: 0 }}>Settings</h1>
+        <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0', fontSize: '0.9rem' }}>
+          Manage your account, security, and preferences.
+        </p>
       </div>
 
       <div className="row g-4">
@@ -76,14 +115,15 @@ export default function Settings() {
         <div className="col-lg-3">
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
             {TABS.map(({ id, icon: Icon, label }) => (
-              <button key={id} onClick={() => { setTab(id); setError(''); setSaved(false); }} style={{
+              <button key={id} onClick={() => setTab(id)} style={{
                 width: '100%', background: tab === id ? 'rgba(14,201,181,0.07)' : 'none',
                 border: 'none', borderLeft: tab === id ? '3px solid var(--accent-green)' : '3px solid transparent',
                 color: tab === id ? 'var(--accent-green)' : 'var(--text-secondary)',
                 padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10,
-                fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
+                fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer',
+                transition: 'all 0.15s', textAlign: 'left',
               }}>
-                <Icon size={16} color={icon === User ? 'var(--accent-green)' : undefined} /> {label}
+                <Icon size={16} color={tab === id ? 'var(--accent-green)' : 'var(--text-muted)'} /> {label}
               </button>
             ))}
           </div>
@@ -91,24 +131,24 @@ export default function Settings() {
 
         {/* Content */}
         <div className="col-lg-9">
-          {error && (
-            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: 'var(--accent-red)', borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
-              {error}
-            </div>
-          )}
-
           {tab === 'profile' && (
             <div className="animate-fade-in">
               <Section title="Public Profile">
                 <div className="row g-3 mb-4">
                   <div className="col-md-6">
-                    <label className="form-label">Username</label>
-                    <input className="form-control" value={profile.username} onChange={e => setProfile(p => ({ ...p, username: e.target.value }))} />
+                    <label className="form-label">Display Name</label>
+                    <input className="form-control" value={profile.displayName} onChange={e => setProfile(p => ({ ...p, displayName: e.target.value }))} />
                   </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Email</label>
-                    <input className="form-control" value={user?.email || ''} disabled style={{ opacity: 0.6 }} />
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>Email cannot be changed here.</div>
+                  <div className="col-md-6 d-flex align-items-end justify-content-between" style={{ flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <label className="form-label">Email</label>
+                      <input className="form-control" value={user?.email || ''} disabled style={{ opacity: 0.6 }} />
+                    </div>
+                    <span className="tag-chip" style={{ marginBottom: 8 }}>{user?.role || 'user'}</span>
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label">Bio</label>
+                    <textarea className="form-control" rows={3} placeholder="Tell the community about yourself..." value={profile.bio} onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))} />
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Website</label>
@@ -119,7 +159,9 @@ export default function Settings() {
                     <input className="form-control" placeholder="@handle" value={profile.twitter} onChange={e => setProfile(p => ({ ...p, twitter: e.target.value }))} />
                   </div>
                 </div>
-                <SaveBtn saving={saving} saved={saved} onClick={saveProfile} />
+                <button className="btn btn-primary d-flex align-items-center gap-2" onClick={saveProfile} disabled={busy === 'profile'} style={{ minWidth: 120 }}>
+                  {busy === 'profile' ? <span className="spinner-border spinner-border-sm" /> : <Save size={14} />} Save Changes
+                </button>
               </Section>
             </div>
           )}
@@ -133,7 +175,7 @@ export default function Settings() {
                     <div style={{ position: 'relative' }}>
                       <input className="form-control" type={showPw ? 'text' : 'password'} value={pw.current} onChange={e => setPw(p => ({ ...p, current: e.target.value }))} style={{ paddingRight: 44 }} />
                       <button type="button" onClick={() => setShowPw(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                        {showPw ? <EyeOff size={16} color="var(--accent-green)" /> : <Eye size={16} color="var(--accent-green)" />}
+                        {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                   </div>
@@ -146,7 +188,9 @@ export default function Settings() {
                     <input className="form-control" type="password" value={pw.confirm} onChange={e => setPw(p => ({ ...p, confirm: e.target.value }))} />
                   </div>
                 </div>
-                <SaveBtn saving={saving} saved={saved} onClick={savePassword} />
+                <button className="btn btn-primary d-flex align-items-center gap-2" onClick={savePassword} disabled={busy === 'security'} style={{ minWidth: 120 }}>
+                  {busy === 'security' ? <span className="spinner-border spinner-border-sm" /> : <Lock size={14} />} Update Password
+                </button>
               </Section>
 
               <Section title="Two-Factor Authentication">
@@ -155,9 +199,7 @@ export default function Settings() {
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>Authenticator App</div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Add an extra layer of security to your account.</div>
                   </div>
-                  <button className="btn btn-outline-primary btn-sm" onClick={() => alert('2FA setup would open here in production.')}>
-                    Set up 2FA
-                  </button>
+                  <span className="tag-chip" style={{ color: 'var(--accent-yellow)' }}>{user?.tfaEnabled ? 'Enabled' : 'Off'}</span>
                 </div>
               </Section>
             </div>
@@ -166,20 +208,14 @@ export default function Settings() {
           {tab === 'notif' && (
             <div className="animate-fade-in">
               <Section title="Notification Preferences">
-                {[
-                  { key: 'solves',         label: 'Challenge Solved',   desc: 'When you successfully submit a correct flag.' },
-                  { key: 'achievements',   label: 'Achievements',       desc: 'When you unlock a new badge or achievement.' },
-                  { key: 'new_challenges', label: 'New Challenges',     desc: 'When new challenges are added to the platform.' },
-                  { key: 'events',         label: 'Events',             desc: 'CTF event announcements and reminders.' },
-                  { key: 'rank_changes',   label: 'Rank Changes',       desc: 'When your global rank changes significantly.' },
-                ].map(({ key, label, desc }) => (
+                {NOTIF_ITEMS.map(({ key, label, desc }) => (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border-color)' }}>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{label}</div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{desc}</div>
                     </div>
-                    <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
-                      <input type="checkbox" checked={notifPrefs[key]} onChange={e => setNotifPrefs(p => ({ ...p, [key]: e.target.checked }))} style={{ opacity: 0, width: 0, height: 0 }} />
+                    <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer', flexShrink: 0 }}>
+                      <input type="checkbox" checked={!!notifPrefs[key]} onChange={e => setNotifPrefs(p => ({ ...p, [key]: e.target.checked }))} style={{ opacity: 0, width: 0, height: 0 }} />
                       <span style={{
                         position: 'absolute', inset: 0, borderRadius: 24,
                         background: notifPrefs[key] ? 'var(--accent-green)' : 'var(--bg-elevated)',
@@ -197,8 +233,8 @@ export default function Settings() {
                   </div>
                 ))}
                 <div style={{ marginTop: 20 }}>
-                  <button className="btn btn-primary" onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 3000); }}>
-                    {saved ? <><CheckCircle size={14} style={{ marginRight: 6 }} />Saved</> : 'Save Preferences'}
+                  <button className="btn btn-primary d-flex align-items-center gap-2" onClick={saveNotifs} disabled={busy === 'notif'}>
+                    {busy === 'notif' ? <span className="spinner-border spinner-border-sm" /> : <Save size={14} />} Save Preferences
                   </button>
                 </div>
               </Section>
@@ -215,8 +251,8 @@ export default function Settings() {
                       Permanently delete your account and all associated data. This action cannot be undone.
                     </div>
                   </div>
-                  <button className="btn btn-danger btn-sm" onClick={() => { if (window.confirm('This is a demo — account deletion would be permanent in production.')) alert('Account deletion would be handled by the backend API.'); }}>
-                    <Trash2 size={14} style={{ marginRight: 6 }} />Delete Account
+                  <button className="btn btn-danger btn-sm d-flex align-items-center gap-2" onClick={handleDelete}>
+                    <Trash2 size={14} /> Delete Account
                   </button>
                 </div>
               </Section>

@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Flag, Users, CheckCircle, XCircle, Download,
   ExternalLink, Copy, ChevronRight, Tag, Clock, User, Globe,
-  File, FileText, FileCode, FileImage, FileTerminal, Package, Smartphone, Activity
+  File, FileText, FileCode, FileImage, FileTerminal, Package, Smartphone, Activity,
+  Power, Server, Loader, Square
 } from 'lucide-react';
 import HintCard from '../components/ui/HintCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -30,6 +31,38 @@ export default function ChallengeDetails() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('description');
 
+  const [instance, setInstance] = useState(null);
+  const [instanceState, setInstanceState] = useState('idle');
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [instCopied, setInstCopied] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const inst = await challengeService.getInstance(id);
+      setInstance(inst);
+      setInstanceState(inst ? 'active' : 'idle');
+      if (inst) setTimeLeft(Math.max(0, Math.floor((inst.expiresAt - Date.now()) / 1000)));
+    })();
+  }, [id]);
+
+  useEffect(() => {
+    if (!instance) return;
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setInstance(null);
+          setInstanceState('idle');
+          setTimeLeft(0);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [instance]);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -52,6 +85,7 @@ export default function ChallengeDetails() {
       if (res.correct && !res.alreadySolved) {
         addPoints(res.points);
         setChallenge(prev => ({ ...prev, solved: true }));
+        setShowComplete(true);
       }
     } catch { /* silent */ }
     setSubmitting(false);
@@ -64,6 +98,35 @@ export default function ChallengeDetails() {
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  const handleStartInstance = async () => {
+    setInstanceState('starting');
+    try {
+      const inst = await challengeService.startInstance(id);
+      setInstance(inst);
+      setTimeLeft(Math.max(0, Math.floor((inst.expiresAt - Date.now()) / 1000)));
+      setInstanceState('active');
+    } catch {
+      setInstanceState('idle');
+    }
+  };
+
+  const handleStopInstance = async () => {
+    await challengeService.stopInstance(id);
+    setInstance(null);
+    setInstanceState('idle');
+    setTimeLeft(0);
+  };
+
+  const copyInstance = () => {
+    if (instance?.command) {
+      navigator.clipboard.writeText(instance.command);
+      setInstCopied(true);
+      setTimeout(() => setInstCopied(false), 2000);
+    }
+  };
+
+  const fmtTime = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   if (loading) return <LoadingSpinner fullPage text="Loading challenge..." />;
   if (!challenge) return null;
@@ -95,6 +158,12 @@ export default function ChallengeDetails() {
             <div className="d-flex flex-wrap align-items-center gap-2 mb-4">
               <span className="cat-chip">{challenge.category}</span>
               <span className={`diff-badge ${diffClass[challenge.difficulty]}`}>{challenge.difficulty}</span>
+              {challenge.trial && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 10px', borderRadius: 20, fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'rgba(139,92,246,0.15)', color: 'var(--diff-insane)', border: '1px solid rgba(139,92,246,0.3)' }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                  Trial
+                </span>
+              )}
               {challenge.solved && (
                 <span className="solved-tag">
                   <CheckCircle size={12} /> Solved
@@ -276,6 +345,84 @@ export default function ChallengeDetails() {
         {/* Sidebar — flag submission */}
         <div className="col-lg-4">
           <div style={{ position: 'sticky', top: 80 }}>
+            {/* Challenge instance */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '24px', marginBottom: 16, animation: 'fadeInUp 0.4s ease 0.15s both' }}>
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <div className="section-title">Challenge Instance</div>
+                {instance && <span className="status-dot green" />}
+              </div>
+
+              {instanceState === 'starting' && (
+                <div style={{ textAlign: 'center', padding: '22px 0', color: 'var(--text-secondary)' }}>
+                  <Loader size={28} color="var(--accent-green)" style={{ animation: 'spin 1s linear infinite', marginBottom: 12 }} />
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-green)' }}>
+                    Deploying instance...
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>This usually takes a few seconds</div>
+                </div>
+              )}
+
+              {!instance && instanceState !== 'starting' && (
+                <>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.7, marginBottom: 16 }}>
+                    This challenge runs on a live environment. Start your own private
+                    instance and connect to it to capture the flag.
+                  </p>
+                  <button
+                    onClick={handleStartInstance}
+                    className="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2"
+                    style={{ padding: '12px' }}
+                  >
+                    <Power size={15} /> Start Instance
+                  </button>
+                </>
+              )}
+
+              {instance && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Server size={15} color="var(--accent-green)" />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--accent-green)', fontWeight: 700, letterSpacing: '0.1em' }}>
+                        RUNNING
+                      </span>
+                    </div>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-yellow)', fontWeight: 700 }}>
+                      <Clock size={13} /> {fmtTime(timeLeft)}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#041212', border: '1px solid rgba(14,201,181,0.2)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: 'var(--accent-green)', flex: 1, wordBreak: 'break-all' }}>
+                      {instance.command}
+                    </span>
+                    <button onClick={copyInstance} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0 }}>
+                      <Copy size={14} />
+                    </button>
+                  </div>
+                  {instCopied && <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--accent-green)', marginBottom: 12 }}>Copied to clipboard!</div>}
+
+                  <div className="d-flex gap-2">
+                    {instance.command.startsWith('http') && (
+                      <a
+                        href={instance.command} target="_blank" rel="noreferrer"
+                        className="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 flex-fill"
+                      >
+                        <ExternalLink size={14} /> Open
+                      </a>
+                    )}
+                    <button
+                      onClick={handleStopInstance}
+                      className="btn btn-danger d-flex align-items-center justify-content-center gap-2 flex-fill"
+                      style={{ padding: '10px' }}
+                    >
+                      <Square size={13} /> Stop
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
             {/* Flag submission */}
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '24px', marginBottom: 16, animation: 'fadeInUp 0.4s ease 0.2s both' }}>
               <div className="section-title mb-3">Submit Flag</div>
@@ -292,16 +439,13 @@ export default function ChallengeDetails() {
                     <label className="form-label" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
                       Enter Flag
                     </label>
-                    <div className="flag-input-wrapper">
-                      <span className="flag-prefix">CTF{`{`}</span>
-                      <input
+                    <input
                         className="form-control flag-input"
-                        placeholder="flag_here"
-                        value={flag.replace(/^CTF\{/, '').replace(/\}$/, '')}
-                        onChange={e => setFlag(`CTF{${e.target.value}}`)}
+                        placeholder="CTF{flag_here}"
+                        value={flag}
+                        onChange={e => setFlag(e.target.value)}
                         disabled={submitting}
                       />
-                    </div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>
                       Format: CTF{`{flag_text}`}
                     </div>
@@ -368,6 +512,75 @@ export default function ChallengeDetails() {
           </div>
         </div>
       </div>
+
+      {showComplete && result && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 2000,
+          background: 'rgba(4, 12, 12, 0.8)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px', animation: 'fadeIn 0.25s ease',
+        }} onClick={() => setShowComplete(false)}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-card)',
+              border: '1px solid rgba(14,201,181,0.35)',
+              borderRadius: 18,
+              padding: '36px 40px',
+              maxWidth: 420,
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: 'var(--glow-green), var(--shadow-lg)',
+              animation: 'fadeInUp 0.35s ease',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{
+              width: 84, height: 84, margin: '0 auto 18px',
+              borderRadius: '50%',
+              background: 'rgba(14,201,181,0.12)',
+              border: '2px solid var(--accent-green)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: 'var(--glow-green)',
+            }}>
+              <CheckCircle size={44} color="var(--accent-green)" style={{ animation: 'pop-in 0.4s ease' }} />
+            </div>
+
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--accent-green)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 6 }}>
+              Flag Accepted
+            </div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 6 }}>Challenge Completed!</div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 20 }}>
+              You captured <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{challenge.title}</span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '14px', marginBottom: 24 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Reward</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-green)' }}>+{result.points}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>points</span>
+            </div>
+
+            <div className="d-flex flex-column gap-2">
+              <button
+                className="btn btn-primary"
+                style={{ padding: '12px' }}
+                onClick={() => { setShowComplete(false); navigate('/challenges'); }}
+              >
+                Back to Challenges
+              </button>
+              <button
+                className="btn btn-outline-secondary"
+                style={{ padding: '12px' }}
+                onClick={() => setShowComplete(false)}
+              >
+                Stay on Page
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

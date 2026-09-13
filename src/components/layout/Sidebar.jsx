@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Flag, Trophy, Calendar,
+  LayoutDashboard, Flag, Trophy, Award,
   User, Settings, Shield, BookOpen, Info
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -10,7 +10,7 @@ const navItems = [
   { to: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/challenges',  icon: Flag,            label: 'Challenges' },
   { to: '/leaderboard', icon: Trophy,          label: 'Leaderboard', color: 'var(--accent-green)' },
-  { to: '/events',      icon: Calendar,        label: 'Events' },
+  { to: '/achievements', icon: Award,           label: 'Achievements' },
   { to: '/about',       icon: Info,            label: 'About' },
 ];
 

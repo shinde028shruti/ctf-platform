@@ -15,7 +15,10 @@ function useCountUp(target, duration = 1200) {
   return value;
 }
 
-export default function StatCard({ value, label, prefix = '', suffix = '', animate = true, trend }) {
+export default function StatCard({
+  value, label, prefix = '', suffix = '', animate = true, trend,
+  icon: Icon, iconColor = 'var(--accent-green)', iconBg = 'rgba(14,201,181,0.12)',
+}) {
   const numericValue = typeof value === 'number' ? value : parseInt(String(value).replace(/\D/g, '')) || 0;
   const displayNum = useCountUp(animate ? numericValue : 0);
   const displayValue = animate
@@ -24,7 +27,16 @@ export default function StatCard({ value, label, prefix = '', suffix = '', anima
 
   return (
     <div className="stat-card">
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: Icon ? 'space-between' : 'flex-end', marginBottom: 12 }}>
+        {Icon && (
+          <div style={{
+            width: 38, height: 38, borderRadius: 10,
+            background: iconBg, border: `1px solid ${iconBg}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <Icon size={18} color={iconColor} />
+          </div>
+        )}
         {trend !== undefined && (
           <span style={{
             fontFamily: 'var(--font-mono)', fontSize: '0.7rem',

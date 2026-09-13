@@ -5,7 +5,13 @@
  * TODO: Replace all methods with real API calls when backend is ready.
  */
 
-import { leaderboardUsers, weeklyLeaderboard, monthlyLeaderboard } from '../data/users';
+import {
+  leaderboardUsers,
+  weeklyLeaderboard,
+  monthlyLeaderboard,
+  countryLeaderboard,
+  categoryLeaderboard,
+} from '../data/users';
 
 const delay = (ms = 500) => new Promise(res => setTimeout(res, ms));
 
@@ -35,6 +41,24 @@ export const leaderboardService = {
   async getMonthlyLeaderboard() {
     await delay();
     return [...monthlyLeaderboard].sort((a, b) => b.points - a.points);
+  },
+
+  /**
+   * Get country / region leaderboard.
+   * TODO: Replace with GET /api/leaderboard?type=country
+   */
+  async getCountryLeaderboard() {
+    await delay();
+    return [...countryLeaderboard].sort((a, b) => b.points - a.points);
+  },
+
+  /**
+   * Get category (specialty) leaderboard.
+   * TODO: Replace with GET /api/leaderboard?type=category
+   */
+  async getCategoryLeaderboard() {
+    await delay();
+    return [...categoryLeaderboard].sort((a, b) => b.points - a.points);
   },
 
   /**

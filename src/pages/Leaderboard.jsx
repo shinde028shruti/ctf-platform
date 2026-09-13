@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, TrendingUp, Flame, Target } from 'lucide-react';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import MedalIcon from '../components/ui/MedalIcon';
 import { leaderboardService } from '../services/leaderboardService';
 
-const TABS = ['Global', 'Weekly', 'Monthly', 'Event'];
+const TABS = ['Global', 'Weekly', 'Country/Region', 'Category']; 
+const TAB_LOADERS = {
+  'Global': 'getGlobalLeaderboard',
+  'Weekly': 'getWeeklyLeaderboard',
+  'Country/Region': 'getCountryLeaderboard',
+  'Category': 'getCategoryLeaderboard',
+};
 
 function Podium({ users }) {
   const [first, second, third] = users;
@@ -52,24 +57,36 @@ export default function Leaderboard() {
   const [tab, setTab] = useState('Global');
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('All');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     (async () => {
       setLoading(true);
+      setFilter('All');
+      setSearch('');
       try {
-        let list = [];
-        if (tab === 'Global')  list = await leaderboardService.getGlobalLeaderboard();
-        if (tab === 'Weekly')  list = await leaderboardService.getWeeklyLeaderboard();
-        if (tab === 'Monthly') list = await leaderboardService.getMonthlyLeaderboard();
-        if (tab === 'Event')   list = await leaderboardService.getEventLeaderboard(1);
+        const loader = leaderboardService[TAB_LOADERS[tab]];
+        const list = loader ? await loader() : [];
         setData(list);
       } catch { setData([]); }
       setLoading(false);
     })();
   }, [tab]);
 
-  const top3 = data.slice(0, 3);
-  const rest  = data.slice(3);
+  const isFilterable = tab === 'Country/Region' || tab === 'Category';
+  const filterOptions = isFilterable
+    ? [...new Set(data.map(u => u.meta).filter(Boolean))]
+    : [];
+
+  const visibleData = data.filter(u => {
+    const matchFilter = !isFilterable || filter === 'All' || u.meta === filter;
+    const q = search.trim().toLowerCase();
+    const matchSearch = !q || u.username.toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
+
+  const top3 = visibleData.slice(0, 3);
 
   return (
     <div className="page-container">
@@ -104,23 +121,61 @@ export default function Leaderboard() {
         ))}
       </div>
 
+      {isFilterable && !loading && (
+        <div className="d-flex flex-column flex-md-row gap-2 mb-3 animate-fade-in-up">
+          <div style={{ position: 'relative', flex: 1, maxWidth: 380 }}>
+            <svg
+              width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ position: 'absolute', top: '50%', left: 12, transform: 'translateY(-50%)', pointerEvents: 'none' }}
+            >
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              className="form-control"
+              placeholder={`Search ${tab === 'Country/Region' ? 'players' : 'experts'}...`}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft: 36, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}
+            />
+          </div>
+          <select
+            className="form-select"
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            style={{ width: 'auto', minWidth: 200, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}
+          >
+            <option value="All">All {tab === 'Country/Region' ? 'Regions' : 'Categories'}</option>
+            {filterOptions.map(o => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {loading ? (
         <LoadingSpinner fullPage text="Loading leaderboard..." />
       ) : (
         <>
           {/* Podium */}
           {top3.length >= 3 && <Podium users={top3} />}
+          {visibleData.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>
+              No results match your search.
+            </div>
+          )}
 
           {/* Table */}
-          <div style={{
+          <div className="table-scroll" style={{
             background: 'var(--bg-card)',
             border: '1px solid var(--border-color)',
-            borderRadius: 16, overflow: 'hidden',
+            borderRadius: 16,
           }}>
             <table className="lb-table">
               <thead>
                 <tr>
-                  {['Rank','Player','Points','Solved','Accuracy','Streak'].map(h => (
+                  {['Rank','Player','Points','Solved','Accuracy'].map(h => (
                     <th key={h} style={{
                       background: 'var(--bg-secondary)',
                       color: 'var(--text-muted)',
@@ -137,7 +192,7 @@ export default function Leaderboard() {
                 </tr>
               </thead>
               <tbody>
-                {data.map((u, i) => (
+                {visibleData.map((u, i) => (
                   <tr key={u.id}
                     className={`lb-row ${u.isCurrentUser ? 'current-user' : ''}`}
                     style={{ cursor: 'default' }}
@@ -168,7 +223,7 @@ export default function Leaderboard() {
                             {u.username} {u.isCurrentUser && <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--accent-green)', opacity: 0.7 }}>(you)</span>}
                           </div>
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                            {u.country}
+                            {u.meta || u.country}
                           </div>
                         </div>
                       </div>
@@ -192,11 +247,6 @@ export default function Leaderboard() {
                           {u.accuracy}%
                         </span>
                       </div>
-                    </td>
-                    <td>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: u.streak >= 7 ? 'var(--accent-orange)' : 'var(--text-muted)' }}>
-                        {u.streak}d
-                      </span>
                     </td>
                   </tr>
                 ))}

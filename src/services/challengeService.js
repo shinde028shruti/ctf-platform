@@ -9,6 +9,7 @@ import { challenges as mockChallenges, categories as mockCategories } from '../d
 
 const CHALLENGES_KEY = 'cyberforge_challenges';
 const SOLVED_KEY = 'cyberforge_solved';
+const INSTANCES_KEY = 'cyberforge_instances';
 
 const delay = (ms = 500) => new Promise(res => setTimeout(res, ms));
 
@@ -38,6 +39,18 @@ const saveSolvedIds = (ids) => {
   localStorage.setItem(SOLVED_KEY, JSON.stringify(ids));
 };
 
+const getStoredInstances = () => {
+  const raw = localStorage.getItem(INSTANCES_KEY);
+  if (raw) {
+    try { return JSON.parse(raw); } catch { /* fall through */ }
+  }
+  return {};
+};
+
+const saveStoredInstances = (instances) => {
+  localStorage.setItem(INSTANCES_KEY, JSON.stringify(instances));
+};
+
 export const challengeService = {
   /**
    * Get all published challenges.
@@ -48,7 +61,10 @@ export const challengeService = {
     let list = getStoredChallenges().filter(c => c.status === 'published');
     const solved = getSolvedIds();
 
-    list = list.map(c => ({ ...c, solved: solved.includes(c.id) }));
+    list = list.map(c => ({
+      ...c,
+      solved: c.trial ? false : solved.includes(c.id),
+    }));
 
     if (filters.search) {
       const q = filters.search.toLowerCase();
@@ -92,7 +108,7 @@ export const challengeService = {
     const solved = getSolvedIds();
     const challenge = getStoredChallenges().find(c => c.id === Number(id));
     if (!challenge) throw new Error('Challenge not found.');
-    return { ...challenge, solved: solved.includes(challenge.id) };
+    return { ...challenge, solved: challenge.trial ? false : solved.includes(challenge.id) };
   },
 
   /**
@@ -115,12 +131,16 @@ export const challengeService = {
     if (!challenge) throw new Error('Challenge not found.');
 
     const solved = getSolvedIds();
-    if (solved.includes(challenge.id)) {
+    if (!challenge.trial && solved.includes(challenge.id)) {
       return { correct: true, alreadySolved: true, points: 0, message: 'Already solved!' };
     }
 
     const correct = flag.trim() === challenge.flag;
     if (correct) {
+      // Trial challenges never stay solved — they can be submitted any number of times.
+      if (challenge.trial) {
+        return { correct: true, alreadySolved: false, points: 0, trial: true, message: 'Correct flag!' };
+      }
       solved.push(challenge.id);
       saveSolvedIds(solved);
       return { correct: true, alreadySolved: false, points: challenge.points, message: 'Correct flag!' };
@@ -139,6 +159,63 @@ export const challengeService = {
     const hint = challenge.hints.find(h => h.id === Number(hintId));
     if (!hint) throw new Error('Hint not found.');
     return { hint, pointCost: hint.cost };
+  },
+
+  // ─── Challenge Instances ───────────────────────────────────────────────────
+
+  /**
+   * Start a fresh instance for a challenge.
+   * TODO: Replace with POST /api/challenges/:id/instances (returns live container info)
+   */
+  async startInstance(challengeId) {
+    await delay(1200);
+    const challenge = getStoredChallenges().find(c => c.id === Number(challengeId));
+    if (!challenge) throw new Error('Challenge not found.');
+
+    const proto = challenge.connectionInfo?.url?.startsWith('https') ? 'https' : 'http';
+    const isNetcat = /^nc\s/.test(challenge.connectionInfo?.url || '');
+    const host = (challenge.connectionInfo?.url || 'http://instance.ctf.local')
+      .replace(/^https?:\/\//, '')
+      .replace(/^nc\s+/, '')
+      .split(':')[0];
+    const port = (challenge.connectionInfo?.port || 2000) + Math.floor(Math.random() * 900);
+    const id = `inst-${challengeId}-${Date.now().toString(36)}`;
+    const expiresAt = Date.now() + 30 * 60 * 1000;
+    const url = `${proto}://${host}:${port}`;
+    const command = isNetcat ? `nc ${host} ${port}` : url;
+
+    const instances = getStoredInstances();
+    instances[challengeId] = { id, host, port, expiresAt, protocol: proto, url, command };
+    saveStoredInstances(instances);
+    return instances[challengeId];
+  },
+
+  /**
+   * Stop / terminate a running instance.
+   * TODO: Replace with DELETE /api/challenges/:id/instances/active
+   */
+  async stopInstance(challengeId) {
+    await delay(400);
+    const instances = getStoredInstances();
+    delete instances[challengeId];
+    saveStoredInstances(instances);
+    return { success: true };
+  },
+
+  /**
+   * Get the currently active instance for a challenge (if any), expiring stale ones.
+   * TODO: Replace with GET /api/challenges/:id/instances/active
+   */
+  async getInstance(challengeId) {
+    await delay(200);
+    const instances = getStoredInstances();
+    const instance = instances[challengeId];
+    if (instance && instance.expiresAt <= Date.now()) {
+      delete instances[challengeId];
+      saveStoredInstances(instances);
+      return null;
+    }
+    return instance || null;
   },
 
   // ─── Admin Methods ─────────────────────────────────────────────────────────

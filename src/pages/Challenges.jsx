@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Flag } from 'lucide-react';
 import ChallengeCard from '../components/ui/ChallengeCard';
 import ChallengeFilter from '../components/ui/ChallengeFilter';
@@ -6,10 +7,22 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { challengeService } from '../services/challengeService';
 
 export default function Challenges() {
+  const [searchParams] = useSearchParams();
+  const urlCategory = searchParams.get('category');
   const [allChallenges, setAllChallenges] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ search: '', category: 'All', difficulty: 'All', status: 'All', sort: 'default' });
+  const [filters, setFilters] = useState({
+    search: '',
+    category: urlCategory || 'All',
+    difficulty: 'All',
+    status: 'All',
+    sort: 'default',
+  });
+
+  useEffect(() => {
+    if (urlCategory) setFilters(f => ({ ...f, category: urlCategory }));
+  }, [urlCategory]);
 
   useEffect(() => {
     (async () => {

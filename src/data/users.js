@@ -79,3 +79,22 @@ export const monthlyLeaderboard = [
   { id: 6, username: 'r3v3rs3r', points: 1750, solved: 14, accuracy: 83, streak: 9, country: 'IN', rank: 7 },
   { id: 11, username: 'CipherSage', points: 1600, solved: 12, accuracy: 76, streak: 6, country: 'AU', rank: 8 },
 ];
+
+export const countryLeaderboard = [
+  { id: 301, username: 'RajNet', points: 2750, solved: 26, accuracy: 90, meta: 'India', country: 'IN', rank: 1 },
+  { id: 302, username: 'DelhiDump', points: 2310, solved: 22, accuracy: 88, meta: 'India', country: 'IN', rank: 2 },
+  { id: 1, username: 'h4ck3r_x', points: 1450, solved: 24, accuracy: 68, meta: 'North America', country: 'US', rank: 3, isCurrentUser: true },
+  { id: 303, username: 'MumbaiBytes', points: 1290, solved: 16, accuracy: 84, meta: 'India', country: 'IN', rank: 4 },
+  { id: 304, username: 'ChennaiCipher', points: 1020, solved: 14, accuracy: 81, meta: 'India', country: 'IN', rank: 5 },
+  { id: 305, username: 'BengaluruSniff', points: 860, solved: 12, accuracy: 79, meta: 'India', country: 'IN', rank: 6 },
+];
+
+export const categoryLeaderboard = [
+  { id: 401, username: 'WebSploiter', points: 2620, solved: 21, accuracy: 89, meta: 'Web Exploitation', country: 'US', rank: 1 },
+  { id: 402, username: 'CryptoQueen', points: 2310, solved: 18, accuracy: 91, meta: 'Cryptography', country: 'DE', rank: 2 },
+  { id: 403, username: 'AsmAdventurer', points: 1980, solved: 15, accuracy: 86, meta: 'Reverse Engineering', country: 'CN', rank: 3 },
+  { id: 1, username: 'h4ck3r_x', points: 1450, solved: 24, accuracy: 68, meta: 'Web Exploitation', country: 'US', rank: 4, isCurrentUser: true },
+  { id: 404, username: 'PwnWhisperer', points: 1240, solved: 11, accuracy: 84, meta: 'Binary Exploitation', country: 'RU', rank: 5 },
+  { id: 405, username: 'RootKit', points: 980, solved: 9, accuracy: 80, meta: 'Binary Exploitation', country: 'DE', rank: 6 },
+  { id: 406, username: 'Cloudstorm', points: 820, solved: 8, accuracy: 77, meta: 'Mobile Security', country: 'JP', rank: 7 },
+];
