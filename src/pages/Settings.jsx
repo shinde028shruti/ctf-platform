@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { User, Lock, Bell, Trash2, Eye, EyeOff, Save } from 'lucide-react';
+import { User, Lock, Bell, Trash2, Eye, EyeOff, Save, GraduationCap, Swords } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { authService } from '../services/authService';
 
@@ -52,6 +52,15 @@ export default function Settings() {
   const [showPw, setShowPw] = useState(false);
 
   const [notifPrefs, setNotifPrefs] = useState({ ...NOTIF_DEFAULTS, ...(user?.notifPrefs || {}) });
+
+  const userType = user?.userType || null;
+  const userOnboarding = user?.onboarding || null;
+
+  const setUserMode = (mode) => {
+    const onboarding = userOnboarding ? { ...userOnboarding, userType: mode } : null;
+    updateUser({ userType: mode, onboarding });
+    toast.success(`Switched to ${mode === 'student' ? 'Student' : 'Competitor'} mode.`);
+  };
 
   const [busy, setBusy] = useState(null); // 'profile' | 'security' | 'notif'
 
@@ -116,7 +125,7 @@ export default function Settings() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
             {TABS.map(({ id, icon: Icon, label }) => (
               <button key={id} onClick={() => setTab(id)} style={{
-                width: '100%', background: tab === id ? 'rgba(14,201,181,0.07)' : 'none',
+                width: '100%', background: tab === id ? 'rgba(116,100,220,0.07)' : 'none',
                 border: 'none', borderLeft: tab === id ? '3px solid var(--accent-green)' : '3px solid transparent',
                 color: tab === id ? 'var(--accent-green)' : 'var(--text-secondary)',
                 padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 10,
@@ -225,7 +234,7 @@ export default function Settings() {
                         <span style={{
                           position: 'absolute', top: 3, left: notifPrefs[key] ? 21 : 3,
                           width: 16, height: 16, borderRadius: '50%',
-                          background: notifPrefs[key] ? '#071a1a' : 'var(--text-muted)',
+                          background: notifPrefs[key] ? '#0A0917' : 'var(--text-muted)',
                           transition: 'left 0.25s',
                         }} />
                       </span>

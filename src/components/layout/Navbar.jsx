@@ -59,7 +59,7 @@ export default function Navbar() {
 
         {/* Brand */}
         <Link to={isAuthenticated ? '/dashboard' : '/'} className="d-flex align-items-center gap-2 me-4 text-decoration-none">
-          <div style={{ width: 32, height: 32 }}>
+          <div style={{ width: 32, height: 32, filter: 'drop-shadow(0 0 8px rgba(119,100,224,0.55))' }}>
             <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M32 6 L54 17 L54 39 C54 52 32 60 32 60 C32 60 10 52 10 39 L10 17 Z"
                 fill="none" stroke="url(#shield-grad)" strokeWidth="2.5"/>
@@ -67,8 +67,8 @@ export default function Navbar() {
                 strokeLinecap="round" strokeLinejoin="round"/>
               <defs>
                 <linearGradient id="shield-grad" x1="10" y1="6" x2="54" y2="60" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#00ff88"/>
-                  <stop offset="1" stopColor="#0ec9b5"/>
+                  <stop stopColor="#4F1F71"/>
+                  <stop offset="1" stopColor="#7764E0"/>
                 </linearGradient>
               </defs>
             </svg>

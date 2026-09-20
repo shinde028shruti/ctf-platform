@@ -213,7 +213,7 @@ export default function Leaderboard() {
                             : 'var(--bg-elevated)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700,
-                          color: u.isCurrentUser ? '#071a1a' : 'var(--text-secondary)',
+                          color: u.isCurrentUser ? '#0A0917' : 'var(--text-secondary)',
                           flexShrink: 0,
                         }}>
                           {u.username[0].toUpperCase()}

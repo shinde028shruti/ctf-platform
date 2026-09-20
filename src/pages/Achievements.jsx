@@ -45,7 +45,7 @@ export default function Achievements() {
           flex: 1, minWidth: 220, background: 'var(--bg-card)', border: '1px solid var(--border-color)',
           borderRadius: 14, padding: 20, display: 'flex', alignItems: 'center', gap: 14,
         }}>
-          <div style={{ width: 44, height: 44, borderRadius: 50, background: 'rgba(14,201,181,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 50, background: 'rgba(116,100,220,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Trophy size={20} color="var(--accent-green)" />
           </div>
           <div>
@@ -60,7 +60,7 @@ export default function Achievements() {
           flex: 1, minWidth: 220, background: 'var(--bg-card)', border: '1px solid var(--border-color)',
           borderRadius: 14, padding: 20, display: 'flex', alignItems: 'center', gap: 14,
         }}>
-          <div style={{ width: 44, height: 44, borderRadius: 50, background: 'rgba(14,201,181,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 50, background: 'rgba(116,100,220,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Award size={20} color="var(--accent-green)" />
           </div>
           <div>
@@ -90,7 +90,7 @@ export default function Achievements() {
 
       {/* Grid */}
       {stats.earnedCount > 0 && (
-        <div className="mb-4" style={{ background: 'linear-gradient(135deg, rgba(14,201,181,0.06) 0%, rgba(139,92,246,0.06) 100%)', border: '1px solid rgba(14,201,181,0.15)', borderRadius: 14, padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 14, fontFamily: 'var(--font-mono)' }}>
+        <div className="mb-4" style={{ background: 'linear-gradient(135deg, rgba(116,100,220,0.06) 0%, rgba(139,92,246,0.06) 100%)', border: '1px solid rgba(116,100,220,0.15)', borderRadius: 14, padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 14, fontFamily: 'var(--font-mono)' }}>
           <CheckCircle2 size={18} color="var(--accent-green)" />
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
             Newly unlocked: <strong style={{ color: 'var(--accent-green)' }}>{stats.list.filter(a => a.earned).map(a => a.name).join(', ')}</strong>
@@ -106,7 +106,7 @@ export default function Achievements() {
               style={{
                 animationDelay: `${i * 0.04}s`,
                 background: a.earned ? 'var(--bg-card)' : 'var(--bg-secondary)',
-                border: `1px solid ${a.earned ? 'rgba(14,201,181,0.25)' : 'var(--border-color)'}`,
+                border: `1px solid ${a.earned ? 'rgba(116,100,220,0.25)' : 'var(--border-color)'}`,
                 borderRadius: 14,
                 padding: 22,
                 display: 'flex',
@@ -123,8 +123,8 @@ export default function Achievements() {
                   position: 'absolute', top: 0, right: 0, padding: '5px 12px',
                   fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 700,
                   letterSpacing: '0.1em', textTransform: 'uppercase',
-                  background: 'rgba(14,201,181,0.12)', borderBottomLeftRadius: 10,
-                  color: 'var(--accent-green)', borderLeft: '1px solid rgba(14,201,181,0.2)', borderBottom: '1px solid rgba(14,201,181,0.2)',
+                  background: 'rgba(116,100,220,0.12)', borderBottomLeftRadius: 10,
+                  color: 'var(--accent-green)', borderLeft: '1px solid rgba(116,100,220,0.2)', borderBottom: '1px solid rgba(116,100,220,0.2)',
                 }}>
                   Earned
                 </div>

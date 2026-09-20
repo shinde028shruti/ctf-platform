@@ -7,6 +7,7 @@ import {
   Power, Server, Loader, Square
 } from 'lucide-react';
 import HintCard from '../components/ui/HintCard';
+import CheatsheetTab from '../components/ui/CheatsheetTab';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { challengeService } from '../services/challengeService';
 import { useApp } from '../context/AppContext';
@@ -134,6 +135,7 @@ export default function ChallengeDetails() {
   const tabs = [
     { id: 'description', label: 'Description' },
     { id: 'objectives', label: 'Objectives' },
+    { id: 'cheatsheet', label: 'Cheatsheet' },
     { id: 'hints', label: `Hints (${challenge.hints?.length || 0})` },
     ...(challenge.files?.length ? [{ id: 'files', label: `Files (${challenge.files.length})` }] : []),
     ...(challenge.connectionInfo ? [{ id: 'connect', label: 'Connect' }] : []),
@@ -177,7 +179,7 @@ export default function ChallengeDetails() {
 
             <div className="d-flex flex-wrap gap-4 mb-4">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(14,201,181,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(116,100,220,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Flag size={16} color="var(--accent-green)" />
                 </div>
                 <div>
@@ -186,7 +188,7 @@ export default function ChallengeDetails() {
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(14,201,181,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(116,100,220,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Users size={16} color="var(--accent-cyan)" />
                 </div>
                 <div>
@@ -276,6 +278,10 @@ export default function ChallengeDetails() {
                 </div>
               )}
 
+              {activeTab === 'cheatsheet' && (
+                <CheatsheetTab cheatsheet={challenge.cheatsheet} />
+              )}
+
               {activeTab === 'hints' && (
                 <div className="animate-fade-in">
                   <div className="section-title mb-3">Hints</div>
@@ -325,7 +331,7 @@ export default function ChallengeDetails() {
                       </span>
                       <span className="status-dot green" />
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#041212', border: '1px solid rgba(14,201,181,0.2)', borderRadius: 8, padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--terminal-bg)', border: '1px solid rgba(116,100,220,0.2)', borderRadius: 8, padding: '12px 16px' }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', color: 'var(--accent-green)', flex: 1 }}>
                         {challenge.connectionInfo.url}
                         {challenge.connectionInfo.port && ` :${challenge.connectionInfo.port}`}
@@ -392,7 +398,7 @@ export default function ChallengeDetails() {
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#041212', border: '1px solid rgba(14,201,181,0.2)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--terminal-bg)', border: '1px solid rgba(116,100,220,0.2)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', color: 'var(--accent-green)', flex: 1, wordBreak: 'break-all' }}>
                       {instance.command}
                     </span>
@@ -428,7 +434,7 @@ export default function ChallengeDetails() {
               <div className="section-title mb-3">Submit Flag</div>
 
               {challenge.solved ? (
-                <div style={{ background: 'rgba(14,201,181,0.06)', border: '1px solid rgba(14,201,181,0.25)', borderRadius: 10, padding: '20px', textAlign: 'center' }}>
+                <div style={{ background: 'rgba(116,100,220,0.06)', border: '1px solid rgba(116,100,220,0.25)', borderRadius: 10, padding: '20px', textAlign: 'center' }}>
                   <CheckCircle size={36} color="var(--accent-green)" style={{ marginBottom: 12 }} />
                   <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--accent-green)', marginBottom: 4 }}>Challenge Completed!</div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>You already captured this flag.</div>
@@ -525,7 +531,7 @@ export default function ChallengeDetails() {
             onClick={e => e.stopPropagation()}
             style={{
               background: 'var(--bg-card)',
-              border: '1px solid rgba(14,201,181,0.35)',
+              border: '1px solid rgba(116,100,220,0.35)',
               borderRadius: 18,
               padding: '36px 40px',
               maxWidth: 420,
@@ -540,7 +546,7 @@ export default function ChallengeDetails() {
             <div style={{
               width: 84, height: 84, margin: '0 auto 18px',
               borderRadius: '50%',
-              background: 'rgba(14,201,181,0.12)',
+              background: 'rgba(116,100,220,0.12)',
               border: '2px solid var(--accent-green)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: 'var(--glow-green)',

@@ -20,7 +20,7 @@ export default function ChallengeCard({ challenge, index = 0 }) {
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--accent-green)' }}>
               {challenge.category}
             </span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: challenge.difficulty === 'Easy' ? '#8bbb92' : `var(--diff-${challenge.difficulty.toLowerCase()})` }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: challenge.difficulty === 'Easy' ? 'var(--diff-easy)' : `var(--diff-${challenge.difficulty.toLowerCase()})` }}>
               {challenge.difficulty}
             </span>
           </div>

@@ -353,7 +353,7 @@ export default function CreateChallenge() {
                   <label style={{ position: 'relative', display: 'inline-block', width: 48, height: 26, cursor: 'pointer' }}>
                     <input type="checkbox" checked={form.instanceEnabled} onChange={e => set('instanceEnabled', e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
                     <span style={{ position: 'absolute', inset: 0, borderRadius: 26, background: form.instanceEnabled ? 'var(--accent-green)' : 'var(--bg-elevated)', border: `1px solid ${form.instanceEnabled ? 'var(--accent-green)' : 'var(--border-bright)'}`, transition: 'all 0.25s' }}>
-                      <span style={{ position: 'absolute', top: 3, left: form.instanceEnabled ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: form.instanceEnabled ? '#071a1a' : 'var(--text-muted)', transition: 'left 0.25s' }} />
+                      <span style={{ position: 'absolute', top: 3, left: form.instanceEnabled ? 23 : 3, width: 18, height: 18, borderRadius: '50%', background: form.instanceEnabled ? '#0A0917' : 'var(--text-muted)', transition: 'left 0.25s' }} />
                     </span>
                   </label>
                 </div>
@@ -378,7 +378,7 @@ export default function CreateChallenge() {
                       </Field>
                     </div>
                     <div className="col-12">
-                      <div style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(14,201,181,0.2)', borderRadius: 8, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <div style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(116,100,220,0.2)', borderRadius: 8, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                         <Server size={16} color="var(--accent-cyan)" style={{ flexShrink: 0, marginTop: 2 }} />
                         <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                           <strong style={{ color: 'var(--accent-cyan)' }}>Note:</strong> Instance management (Docker deployment, health checks, auto-restart) will be handled by the backend infrastructure. This form captures the connection details shown to players.
@@ -395,7 +395,7 @@ export default function CreateChallenge() {
 
       {/* Action buttons */}
       <div style={{
-        position: 'sticky', bottom: 0, background: 'rgba(7,11,20,0.95)',
+        position: 'sticky', bottom: 0, background: 'rgba(10,9,23,0.96)',
         backdropFilter: 'blur(12px)', borderTop: '1px solid var(--border-color)',
         padding: '16px 0', marginTop: 24, zIndex: 50,
       }}>

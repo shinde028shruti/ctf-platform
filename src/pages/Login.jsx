@@ -56,7 +56,7 @@ export default function Login() {
       {/* Grid overlay */}
       <div style={{
         position: 'absolute', inset: 0,
-        backgroundImage: 'linear-gradient(rgba(14,201,181,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(14,201,181,0.03) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(rgba(119,100,224,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(119,100,224,0.035) 1px, transparent 1px)',
         backgroundSize: '60px 60px',
         pointerEvents: 'none',
       }} />
@@ -72,7 +72,7 @@ export default function Login() {
                 strokeLinecap="round" strokeLinejoin="round" />
               <defs>
                 <linearGradient id="lg1" x1="10" y1="6" x2="54" y2="60" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#0ec9b5" /><stop offset="1" stopColor="#3dddd0" />
+                  <stop stopColor="#4F1F71" /><stop offset="1" stopColor="#7764E0" />
                 </linearGradient>
               </defs>
             </svg>
@@ -87,7 +87,7 @@ export default function Login() {
 
           {error && (
             <div style={{
-              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+              background: 'rgba(235,107,122,0.08)', border: '1px solid rgba(235,107,122,0.25)',
               color: 'var(--accent-red)', borderRadius: 8, padding: '10px 14px',
               fontSize: '0.85rem', marginBottom: 16, fontFamily: 'var(--font-mono)',
               animation: 'fadeInUp 0.2s ease',

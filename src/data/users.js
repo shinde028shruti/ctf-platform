@@ -16,6 +16,15 @@ export const currentUser = {
   website: 'https://h4ck3r-x.io',
   twitter: '@h4ck3r_x',
   badges: ['first_blood', 'week_streak', 'web_hunter', 'crypto_solver', 'osint_investigator'],
+  onboardingCompleted: true,
+  userType: 'competitor',
+  onboarding: {
+    skillLevel: 'intermediate',
+    teamInterest: 'both',
+    focusAreas: ['Web Exploitation', 'Cryptography', 'OSINT'],
+    purpose: 'competitive',
+    experienceType: 'professional',
+  },
   categoryStats: {
     'Web Exploitation': { solved: 8, total: 15, points: 520 },
     'Cryptography': { solved: 5, total: 12, points: 340 },

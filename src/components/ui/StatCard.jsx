@@ -17,7 +17,7 @@ function useCountUp(target, duration = 1200) {
 
 export default function StatCard({
   value, label, prefix = '', suffix = '', animate = true, trend,
-  icon: Icon, iconColor = 'var(--accent-green)', iconBg = 'rgba(14,201,181,0.12)',
+  icon: Icon, iconColor = 'var(--accent-green)', iconBg = 'rgba(116,100,220,0.12)',
 }) {
   const numericValue = typeof value === 'number' ? value : parseInt(String(value).replace(/\D/g, '')) || 0;
   const displayNum = useCountUp(animate ? numericValue : 0);

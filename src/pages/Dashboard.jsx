@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Trophy, Flag, Zap, CheckCircle, Lightbulb, ArrowRight, Target, Medal,
-  Swords,
+  Swords, GraduationCap,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import StatCard from '../components/ui/StatCard';
@@ -64,7 +64,7 @@ function RingGauge({ value, size = 150, stroke = 12, color = 'var(--accent-green
 }
 
 const heroStyle = {
-  background: 'linear-gradient(135deg, rgba(14,201,181,0.09) 0%, rgba(14,201,181,0.02) 45%, rgba(139,92,246,0.05) 100%)',
+  background: 'linear-gradient(135deg, rgba(116,100,220,0.09) 0%, rgba(116,100,220,0.02) 45%, rgba(139,92,246,0.05) 100%)',
   border: '1px solid var(--border-bright)',
   borderRadius: 18,
   padding: '28px 32px',
@@ -76,10 +76,28 @@ export default function Dashboard() {
   const { user } = useApp();
   const [recentChallenges, setRecentChallenges] = useState([]);
 
+  const userType = user?.userType || 'student';
+  const focusAreas = user?.onboarding?.focusAreas || [];
+  const isStudent = userType === 'student';
+
   useEffect(() => {
-    const unsolved = challenges.filter(c => !user?.solvedChallenges?.includes(c.id)).slice(0, 3);
+    let unsolved;
+    if (isStudent) {
+      const diffOrder = { Easy: 0, Medium: 1, Hard: 2, Insane: 3 };
+      unsolved = challenges
+        .filter(c => !user?.solvedChallenges?.includes(c.id))
+        .sort((a, b) => {
+          const aMatch = focusAreas.includes(a.category) ? 0 : 1;
+          const bMatch = focusAreas.includes(b.category) ? 0 : 1;
+          if (aMatch !== bMatch) return aMatch - bMatch;
+          return diffOrder[a.difficulty] - diffOrder[b.difficulty];
+        })
+        .slice(0, 3);
+    } else {
+      unsolved = challenges.filter(c => !user?.solvedChallenges?.includes(c.id)).slice(0, 3);
+    }
     setRecentChallenges(unsolved);
-  }, [user]);
+  }, [user, isStudent, focusAreas]);
 
   if (!user) return null;
 
@@ -109,7 +127,7 @@ export default function Dashboard() {
 
   const statMeta = [
     { icon: Zap, color: 'var(--accent-cyan)', bg: 'rgba(61,221,208,0.12)', value: user.points, label: 'Total Points' },
-    { icon: CheckCircle, color: 'var(--accent-green)', bg: 'rgba(14,201,181,0.12)', value: solvedCount, label: 'Challenges Solved' },
+    { icon: CheckCircle, color: 'var(--accent-green)', bg: 'rgba(116,100,220,0.12)', value: solvedCount, label: 'Challenges Solved' },
     { icon: Medal, color: 'var(--accent-purple)', bg: 'rgba(139,92,246,0.12)', value: user.rank, label: 'Global Rank', prefix: '#', animate: false },
     { icon: Target, color: 'var(--accent-orange)', bg: 'rgba(249,115,22,0.12)', value: completionPct, label: 'Completion', suffix: '%' },
   ];
@@ -128,8 +146,24 @@ export default function Dashboard() {
                 Welcome back, <span style={{ color: 'var(--accent-green)' }}>{user.username}</span>.
               </h1>
               <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0', fontSize: '0.95rem', maxWidth: 520 }}>
-                Sharpen your skills. Break the challenges. Capture the flag.
+                {isStudent
+                  ? 'Follow your learning path. Challenges are curated to help you build skills step by step.'
+                  : 'Sharpen your skills. Break the challenges. Capture the flag.'}
               </p>
+              <div className="d-flex flex-wrap gap-2 mt-3">
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase',
+                  color: isStudent ? 'var(--accent-cyan)' : 'var(--accent-purple)',
+                  background: isStudent ? 'rgba(61,221,208,0.1)' : 'rgba(139,92,246,0.1)',
+                  border: isStudent ? '1px solid rgba(61,221,208,0.25)' : '1px solid rgba(139,92,246,0.25)',
+                  borderRadius: 20, padding: '5px 14px',
+                }}>
+                  {isStudent ? <GraduationCap size={13} /> : <Swords size={13} />}
+                  {isStudent ? 'Student Mode' : 'Competitor Mode'}
+                </span>
+              </div>
               <div className="d-flex flex-wrap gap-2 mt-4">
                 <Link to="/challenges" className="btn btn-primary btn-sm d-flex align-items-center gap-2">
                   <Swords size={15} /> Browse Challenges
@@ -185,7 +219,7 @@ export default function Dashboard() {
         <div className="col-lg-8">
           <div className="mb-4 animate-fade-in-up delay-200">
             <div className="d-flex align-items-center justify-content-between mb-3">
-              <div className="section-title">Recommended For You</div>
+              <div className="section-title">{isStudent ? 'Next Up In Your Learning Path' : 'Recommended For You'}</div>
               <Link to="/challenges" className="d-flex align-items-center gap-1" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 View all <ArrowRight size={13} />
               </Link>
@@ -203,7 +237,7 @@ export default function Dashboard() {
                     gap: 16,
                     transition: 'all 0.2s ease',
                   }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(14,201,181,0.25)'; e.currentTarget.style.background = 'var(--bg-card-hover)'; }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(116,100,220,0.25)'; e.currentTarget.style.background = 'var(--bg-card-hover)'; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.background = 'var(--bg-card)'; }}
                   >
                     <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

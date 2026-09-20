@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import { AppProvider, useApp } from './context/AppContext';
+
+const ParticleField = lazy(() => import('./components/three/ParticleField'));
 
 // Layout
 import AppLayout from './components/layout/AppLayout';
@@ -9,6 +11,7 @@ import AppLayout from './components/layout/AppLayout';
 // Auth pages
 import Login    from './pages/Login';
 import Register from './pages/Register';
+import Onboarding from './pages/Onboarding';
 
 // Public pages
 import Landing   from './pages/Landing';
@@ -32,10 +35,26 @@ import CreateChallenge   from './pages/admin/CreateChallenge';
 import AdminPlaceholder  from './pages/admin/AdminPlaceholder';
 
 // Route guards
-function PrivateRoute({ children }) {
+function PublicOnlyRoute({ children }) {
   const { isAuthenticated, loading } = useApp();
   if (loading) return null;
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
+}
+
+function OnboardingRoute({ children }) {
+  const { isAuthenticated, user, loading } = useApp();
+  if (loading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.onboardingCompleted) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
+function PrivateRoute({ children }) {
+  const { isAuthenticated, user, loading } = useApp();
+  if (loading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!user?.onboardingCompleted) return <Navigate to="/onboarding" replace />;
+  return children;
 }
 
 function AdminRoute({ children }) {
@@ -46,18 +65,13 @@ function AdminRoute({ children }) {
   return children;
 }
 
-function PublicOnlyRoute({ children }) {
-  const { isAuthenticated, loading } = useApp();
-  if (loading) return null;
-  return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
-}
-
 function AppRoutes() {
   return (
     <Routes>
       {/* Public auth pages (no navbar layout) */}
       <Route path="/login"    element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
       <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+      <Route path="/onboarding" element={<OnboardingRoute><Onboarding /></OnboardingRoute>} />
 
       {/* Landing + public pages (with navbar, no sidebar) */}
       <Route element={<AppLayout showSidebar={false} />}>
@@ -110,6 +124,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppProvider>
+        <Suspense fallback={null}>
+          <ParticleField />
+        </Suspense>
         <AppRoutes />
         <ToastContainer
           position="top-right"

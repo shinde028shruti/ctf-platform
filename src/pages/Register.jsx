@@ -56,7 +56,7 @@ export default function Register() {
       <AnimatedAuthBg />
       <div style={{
         position: 'absolute', inset: 0,
-        backgroundImage: 'linear-gradient(rgba(14,201,181,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(14,201,181,0.025) 1px, transparent 1px)',
+        backgroundImage: 'linear-gradient(rgba(116,100,220,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(116,100,220,0.025) 1px, transparent 1px)',
         backgroundSize: '60px 60px', pointerEvents: 'none',
       }} />
 
@@ -69,7 +69,7 @@ export default function Register() {
               <path d="M23 32 L30 39 L42 25" stroke="url(#lg2)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               <defs>
                 <linearGradient id="lg2" x1="10" y1="6" x2="54" y2="60" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#0ec9b5" /><stop offset="1" stopColor="#3dddd0" />
+                  <stop stopColor="#7764E0" /><stop offset="1" stopColor="#9BA6FF" />
                 </linearGradient>
               </defs>
             </svg>

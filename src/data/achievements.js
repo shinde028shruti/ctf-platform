@@ -10,7 +10,7 @@ export const achievements = [
     description: 'Solve your very first challenge and taste the win.',
     category: 'General',
     icon: Zap,
-    gradient: ['#00ff88', '#0ec9b5'],
+    gradient: ['#4F1F71', '#7764E0'],
     glow: 'rgba(0,255,136,0.35)',
     reward: 100,
     required: 1,

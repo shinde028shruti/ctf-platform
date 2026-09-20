@@ -72,7 +72,7 @@ function EventCard({ event, onJoin }) {
       {/* Header */}
       <div style={{
         background: event.featured
-          ? 'linear-gradient(135deg, rgba(14,201,181,0.06) 0%, rgba(14,201,181,0.04) 100%)'
+          ? 'linear-gradient(135deg, rgba(116,100,220,0.06) 0%, rgba(116,100,220,0.04) 100%)'
           : 'transparent',
         padding: '28px',
         borderBottom: '1px solid var(--border-color)',
@@ -83,7 +83,7 @@ function EventCard({ event, onJoin }) {
               {event.featured && (
                 <span style={{
                   fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700,
-                  background: 'rgba(14,201,181,0.12)', border: '1px solid rgba(14,201,181,0.3)',
+                  background: 'rgba(116,100,220,0.12)', border: '1px solid rgba(116,100,220,0.3)',
                   color: 'var(--accent-green)', padding: '2px 10px', borderRadius: 20,
                   textTransform: 'uppercase', letterSpacing: '0.1em',
                 }}>Featured</span>
@@ -111,7 +111,7 @@ function EventCard({ event, onJoin }) {
               {event.joined ? (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  background: 'rgba(14,201,181,0.08)', border: '1px solid rgba(14,201,181,0.25)',
+                  background: 'rgba(116,100,220,0.08)', border: '1px solid rgba(116,100,220,0.25)',
                   borderRadius: 10, padding: '10px 18px',
                   color: 'var(--accent-green)', fontSize: '0.875rem', fontWeight: 600,
                 }}>

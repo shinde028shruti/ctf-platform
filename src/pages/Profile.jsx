@@ -47,7 +47,7 @@ export default function Profile() {
             {/* Banner */}
             <div style={{
               height: 100,
-              background: 'linear-gradient(135deg, rgba(14,201,181,0.1) 0%, rgba(14,201,181,0.06) 50%, rgba(139,92,246,0.06) 100%)',
+              background: 'linear-gradient(135deg, rgba(116,100,220,0.1) 0%, rgba(116,100,220,0.06) 50%, rgba(139,92,246,0.06) 100%)',
               position: 'relative',
             }}>
               <div style={{
@@ -56,7 +56,7 @@ export default function Profile() {
                 background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontFamily: 'var(--font-mono)', fontSize: '1.4rem', fontWeight: 900,
-                color: '#071a1a',
+                color: '#0A0917',
                 border: '3px solid var(--bg-card)',
               }}>
                 {user.username[0].toUpperCase()}

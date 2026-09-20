@@ -6,7 +6,7 @@ export default function LoadingSpinner({ size = 32, text = null, fullPage = fals
       <div
         style={{
           width: size, height: size,
-          border: `3px solid rgba(14,201,181,0.1)`,
+          border: `3px solid rgba(116,100,220,0.1)`,
           borderTopColor: 'var(--accent-green)',
           borderRadius: '50%',
           animation: 'spin 0.8s linear infinite',

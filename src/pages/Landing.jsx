@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Shield, ChevronRight, Globe, Lock, Cpu, Search, Eye, Network, Terminal as TermIcon, Smartphone, Image, Puzzle, Trophy, Calendar, ArrowRight, Users, Flag, Star } from 'lucide-react';
 import { challenges, categories } from '../data/challenges';
 import { leaderboardUsers } from '../data/users';
 import { events } from '../data/events';
+import UserTypeSelector from '../components/ui/UserTypeSelector';
+
+const HeroScene = lazy(() => import('../components/three/HeroScene'));
 
 const catIconMap = { Globe, Lock, Cpu, Search, Eye, Network, Terminal: TermIcon, Smartphone, Image, Puzzle };
 
@@ -62,7 +66,7 @@ export default function Landing() {
               width: `${[200,300,150,250,180,220][i]}px`,
               height: `${[200,300,150,250,180,220][i]}px`,
               borderRadius: '50%',
-              background: `radial-gradient(circle, ${['rgba(14,201,181,0.04)', 'rgba(14,201,181,0.03)', 'rgba(139,92,246,0.03)', 'rgba(14,201,181,0.03)', 'rgba(14,201,181,0.04)', 'rgba(14,201,181,0.03)'][i]} 0%, transparent 70%)`,
+              background: `radial-gradient(circle, ${['rgba(119,100,224,0.06)', 'rgba(79,31,113,0.05)', 'rgba(167,139,250,0.04)', 'rgba(119,100,224,0.05)', 'rgba(79,31,113,0.06)', 'rgba(119,100,224,0.05)'][i]} 0%, transparent 70%)`,
               left: `${[10,70,30,80,5,55][i]}%`,
               top: `${[20,60,80,10,50,40][i]}%`,
               animation: `float ${[6,8,7,9,6.5,7.5][i]}s ease-in-out infinite`,
@@ -80,14 +84,29 @@ export default function Landing() {
                   <TypewriterText text="Platform Online" />
                 </span>
               </div>
-              <h1 className="hero-title mb-4">
+              <motion.h1
+                className="hero-title mb-4"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15, duration: 0.6, ease: 'easeOut' }}
+              >
                 ENTER THE<br />CYBER ARENA
-              </h1>
-              <p className="hero-subtitle mb-5">
+              </motion.h1>
+              <motion.p
+                className="hero-subtitle mb-5"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.6, ease: 'easeOut' }}
+              >
                 Every flag has a story.<br />
                 Test your cybersecurity skills through real-world inspired challenges — from web exploitation to kernel pwn.
-              </p>
-              <div className="d-flex flex-wrap gap-3">
+              </motion.p>
+              <motion.div
+                className="d-flex flex-wrap gap-3"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45, duration: 0.6, ease: 'easeOut' }}
+              >
                 <Link to="/register" className="btn btn-primary d-flex align-items-center gap-2"
                   style={{ padding: '14px 28px', fontSize: '0.95rem', letterSpacing: '0.03em' }}>
                   Join the CTF <ChevronRight size={18} />
@@ -96,8 +115,13 @@ export default function Landing() {
                   style={{ padding: '14px 28px', fontSize: '0.95rem' }}>
                   Explore Challenges
                 </Link>
-              </div>
-              <div className="d-flex flex-wrap gap-4 mt-5">
+              </motion.div>
+              <motion.div
+                className="d-flex flex-wrap gap-4 mt-5"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.6, ease: 'easeOut' }}
+              >
                 {[
                   { val: 4820, label: 'Hackers', suf: '+' },
                   { val: challenges.length, label: 'Challenges', suf: '' },
@@ -113,11 +137,18 @@ export default function Landing() {
                     </div>
                   </div>
                 ))}
-              </div>
+              </motion.div>
             </div>
-            <div className="col-lg-6 animate-fade-in delay-300">
+
+            <div
+              className="col-lg-6 animate-fade-in delay-300"
+              style={{ position: 'relative', minHeight: 420 }}
+            >
+              <Suspense fallback={null}>
+                <HeroScene />
+              </Suspense>
               {/* Terminal widget */}
-              <div className="terminal-box animate-glow" style={{ maxWidth: 480, marginLeft: 'auto' }}>
+              <div className="terminal-box animate-glow" style={{ position: 'relative', maxWidth: 480, marginLeft: 'auto' }}>
                 <div className="terminal-titlebar">
                   <span className="terminal-dot red" />
                   <span className="terminal-dot yellow" />
@@ -134,6 +165,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ── Student / Competitor ── */}
+      <UserTypeSelector />
 
       {/* ── About CyberForge ── */}
       <section style={{ background: 'var(--bg-secondary)', padding: '80px 0', borderTop: '1px solid var(--border-color)' }}>
@@ -298,7 +332,7 @@ export default function Landing() {
                     <span className={`lb-rank ${i === 0 ? 'top-1' : i === 1 ? 'top-2' : i === 2 ? 'top-3' : ''}`} style={{ minWidth: 24 }}>
                       #{u.rank}
                     </span>
-                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.72rem', fontWeight: 700, color: '#071a1a', margin: '0 10px', flexShrink: 0 }}>
+                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.72rem', fontWeight: 700, color: '#0A0917', margin: '0 10px', flexShrink: 0, boxShadow: '0 0 10px rgba(116,100,220,0.35)' }}>
                       {u.username[0].toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
@@ -334,9 +368,10 @@ export default function Landing() {
                   flex: 1,
                 }}>
                   <div style={{
-                    background: 'linear-gradient(135deg, rgba(14,201,181,0.08) 0%, rgba(14,201,181,0.05) 100%)',
+                    background: 'linear-gradient(135deg, rgba(119,100,224,0.1) 0%, rgba(79,31,113,0.08) 100%)',
                     padding: '20px',
                     borderBottom: '1px solid var(--border-color)',
+                    position: 'relative',
                   }}>
                     <div className="d-flex align-items-center gap-2 mb-3">
                       <span className="status-dot green" />
@@ -378,7 +413,7 @@ export default function Landing() {
 
       {/* ── CTA ── */}
       <section style={{
-        background: 'linear-gradient(135deg, rgba(14,201,181,0.06) 0%, rgba(14,201,181,0.04) 50%, rgba(139,92,246,0.04) 100%)',
+        background: 'linear-gradient(135deg, rgba(119,100,224,0.07) 0%, rgba(79,31,113,0.06) 50%, rgba(79,31,113,0.05) 100%)',
         borderTop: '1px solid var(--border-color)',
         borderBottom: '1px solid var(--border-color)',
         padding: '80px 0',

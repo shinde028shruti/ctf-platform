@@ -57,6 +57,9 @@ export const authService = {
       streak: 0,
       badges: [],
       recentActivity: [],
+      onboardingCompleted: false,
+      userType: null,
+      onboarding: null,
     };
 
     localStorage.setItem(AUTH_KEY, 'true');

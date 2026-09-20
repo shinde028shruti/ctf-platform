@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Flag } from 'lucide-react';
+import { Flag, GraduationCap, Swords } from 'lucide-react';
 import ChallengeCard from '../components/ui/ChallengeCard';
 import ChallengeFilter from '../components/ui/ChallengeFilter';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { challengeService } from '../services/challengeService';
+import { useApp } from '../context/AppContext';
 
 export default function Challenges() {
+  const { user, updateUser } = useApp();
   const [searchParams] = useSearchParams();
   const urlCategory = searchParams.get('category');
   const [allChallenges, setAllChallenges] = useState([]);
@@ -19,6 +21,9 @@ export default function Challenges() {
     status: 'All',
     sort: 'default',
   });
+
+  const userType = user?.userType;
+  const focusAreas = user?.onboarding?.focusAreas || [];
 
   useEffect(() => {
     if (urlCategory) setFilters(f => ({ ...f, category: urlCategory }));
@@ -37,9 +42,19 @@ export default function Challenges() {
   useEffect(() => {
     (async () => {
       const list = await challengeService.getChallenges(filters);
-      setFiltered(list);
+
+      let final = list;
+      if (userType === 'student' && !filters.search && filters.difficulty === 'All' && filters.category === 'All') {
+        const interestMatches = focusAreas.length
+          ? list.filter(c => focusAreas.includes(c.category) && !c.solved).concat(list.filter(c => !focusAreas.includes(c.category) && !c.solved))
+          : list.filter(c => !c.solved);
+        const diffOrder = { Easy: 0, Medium: 1, Hard: 2, Insane: 3 };
+        final = interestMatches.sort((a, b) => diffOrder[a.difficulty] - diffOrder[b.difficulty] || b.points - a.points);
+      }
+
+      setFiltered(final);
     })();
-  }, [filters]);
+  }, [filters, userType, focusAreas]);
 
   const diffOrder = { Easy: 0, Medium: 1, Hard: 2, Insane: 3 };
   const grouped = ['Easy', 'Medium', 'Hard', 'Insane'].reduce((acc, d) => {
@@ -48,6 +63,10 @@ export default function Challenges() {
     return acc;
   }, {});
   const hasGroups = filters.sort === 'default' && !filters.search && Object.keys(grouped).length > 0;
+
+  const switchMode = (mode) => {
+    updateUser({ userType: mode });
+  };
 
   return (
     <div className="page-container">
@@ -58,7 +77,9 @@ export default function Challenges() {
             <div className="section-title mb-2">Browse</div>
             <h1 style={{ margin: 0 }}>Challenges</h1>
             <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0', fontSize: '0.9rem' }}>
-              Find your next target. Earn points. Climb the ranks.
+              {userType === 'student'
+                ? 'Curated learning path. Start with recommended challenges and grow your skills progressively.'
+                : 'Find your next target. Earn points. Climb the ranks.'}
             </p>
           </div>
           <div style={{
@@ -86,6 +107,38 @@ export default function Challenges() {
             </div>
           </div>
         </div>
+
+        {/* Mode toggle */}
+        <div style={{ display: 'inline-flex', gap: 8, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 10, padding: 4, marginTop: 20 }}>
+          <button
+            onClick={() => switchMode('student')}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '8px 18px', borderRadius: 7,
+              border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+              fontFamily: 'var(--font-mono)',
+              background: userType === 'student' ? 'rgba(61,221,208,0.12)' : 'transparent',
+              color: userType === 'student' ? 'var(--accent-cyan)' : 'var(--text-muted)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <GraduationCap size={15} /> Student Mode
+          </button>
+          <button
+            onClick={() => switchMode('competitor')}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '8px 18px', borderRadius: 7,
+              border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+              fontFamily: 'var(--font-mono)',
+              background: userType === 'competitor' ? 'rgba(139,92,246,0.12)' : 'transparent',
+              color: userType === 'competitor' ? 'var(--accent-purple)' : 'var(--text-muted)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Swords size={15} /> Competitor Mode
+          </button>
+        </div>
       </div>
 
       {/* Filter */}
@@ -105,7 +158,7 @@ export default function Challenges() {
         Object.entries(grouped).map(([diff, group]) => (
           <div key={diff} className="mb-5">
             <div className="d-flex align-items-center gap-3 mb-3">
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: diff === 'Easy' ? '#8bbb92' : `var(--diff-${diff.toLowerCase()})` }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: diff === 'Easy' ? 'var(--diff-easy)' : `var(--diff-${diff.toLowerCase()})` }}>
                 {diff}
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
