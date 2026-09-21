@@ -40,7 +40,7 @@ function glowTexture() {
   canvas.height = size;
   const ctx = canvas.getContext('2d');
   const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  g.addColorStop(0, 'rgba(167,139,250,0.9)');
+  g.addColorStop(0, 'rgba(119,100,224,0.9)');
   g.addColorStop(0.35, 'rgba(119,100,224,0.45)');
   g.addColorStop(1, 'rgba(119,100,224,0)');
   ctx.fillStyle = g;
@@ -72,9 +72,9 @@ function NetworkCore() {
   return (
     <group ref={group}>
       <group ref={spin}>
-        <group scale={3.4}>
+        <group scale={2.4}>
           <sprite>
-            <spriteMaterial map={glowTex} transparent depthWrite={false} opacity={0.85} blending={2} />
+            <spriteMaterial map={glowTex} transparent depthWrite={false} opacity={0.6} blending={2} />
           </sprite>
         </group>
 

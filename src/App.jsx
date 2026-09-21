@@ -32,6 +32,11 @@ import AdminLayout       from './pages/admin/AdminLayout';
 import AdminDashboard    from './pages/admin/AdminDashboard';
 import ManageChallenges  from './pages/admin/ManageChallenges';
 import CreateChallenge   from './pages/admin/CreateChallenge';
+import AdminCategories   from './pages/admin/AdminCategories';
+import AdminUsers        from './pages/admin/AdminUsers';
+import AdminSubmissions  from './pages/admin/AdminSubmissions';
+import AdminSettings     from './pages/admin/AdminSettings';
+import AdminAuditLogs    from './pages/admin/AdminAuditLogs';
 import AdminPlaceholder  from './pages/admin/AdminPlaceholder';
 
 // Route guards
@@ -106,11 +111,12 @@ function AppRoutes() {
           <Route path="challenges"          element={<ManageChallenges />} />
           <Route path="challenges/new"      element={<CreateChallenge />} />
           <Route path="challenges/:id/edit" element={<CreateChallenge />} />
-          <Route path="categories"          element={<AdminPlaceholder title="Categories" />} />
-          <Route path="users"               element={<AdminPlaceholder title="User Management" />} />
-          <Route path="submissions"         element={<AdminPlaceholder title="Submissions" />} />
+          <Route path="categories"          element={<AdminCategories />} />
+          <Route path="users"               element={<AdminUsers />} />
+          <Route path="submissions"         element={<AdminSubmissions />} />
+          <Route path="settings"            element={<AdminSettings />} />
+          <Route path="audit-logs"          element={<AdminAuditLogs />} />
           <Route path="events"              element={<AdminPlaceholder title="Event Management" />} />
-          <Route path="settings"            element={<AdminPlaceholder title="Admin Settings" />} />
         </Route>
       </Route>
 

@@ -131,7 +131,7 @@ export default function Achievements() {
               )}
 
               <div className="d-flex justify-content-between align-items-start">
-                <AchievementBadge icon={a.icon} gradient={a.gradient} glow={a.glow} locked={!a.earned} />
+                <AchievementBadge icon={a.icon} image={a.image} gradient={a.gradient} glow={a.glow} locked={!a.earned} />
                 <span className="tag-chip" style={{ alignSelf: 'flex-start' }}>{a.category}</span>
               </div>
 

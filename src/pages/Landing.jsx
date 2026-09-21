@@ -147,20 +147,6 @@ export default function Landing() {
               <Suspense fallback={null}>
                 <HeroScene />
               </Suspense>
-              {/* Terminal widget */}
-              <div className="terminal-box animate-glow" style={{ position: 'relative', maxWidth: 480, marginLeft: 'auto' }}>
-                <div className="terminal-titlebar">
-                  <span className="terminal-dot red" />
-                  <span className="terminal-dot yellow" />
-                  <span className="terminal-dot green" />
-                  <span style={{ marginLeft: 8, fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    cyberforge@arena:~
-                  </span>
-                </div>
-                <div className="terminal-body">
-                  <TypedLines />
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -439,33 +425,5 @@ export default function Landing() {
         </div>
       </section>
     </div>
-  );
-}
-
-function TypedLines() {
-  const lines = [
-    { type: 'cmd', text: './start_ctf.sh', delay: 200 },
-    { type: 'out', text: 'Initializing CyberForge...', delay: 800 },
-    { type: 'out', text: 'Loading 18 challenges...      [OK]', delay: 1400 },
-    { type: 'out', text: 'Checking connection...         [OK]', delay: 2000 },
-    { type: 'success', text: 'Access granted.', delay: 2700 },
-    { type: 'cmd', text: 'whoami', delay: 3300 },
-    { type: 'success', text: '> Welcome, hacker_', delay: 3800 },
-  ];
-  const [visible, setVisible] = useState([]);
-  useEffect(() => {
-    const timers = lines.map((l, i) => setTimeout(() => setVisible(p => [...p, l]), l.delay));
-    return () => timers.forEach(clearTimeout);
-  }, []);
-  return (
-    <>
-      {visible.map((l, i) => (
-        <span key={i} className={`terminal-line ${l.type}`} style={{ display: 'block' }}>
-          {l.type === 'cmd' && <span style={{ color: 'var(--accent-cyan)' }}>$ </span>}
-          {l.text}
-        </span>
-      ))}
-      {visible.length < lines.length && <span className="terminal-cursor" />}
-    </>
   );
 }
