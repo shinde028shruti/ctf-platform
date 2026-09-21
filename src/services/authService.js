@@ -60,6 +60,9 @@ export const authService = {
       onboardingCompleted: false,
       userType: null,
       onboarding: null,
+      profileVisibility: 'public',
+      weeklyProgress: [],
+      monthlyProgress: [],
     };
 
     localStorage.setItem(AUTH_KEY, 'true');

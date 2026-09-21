@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Trophy, Flag, Flame, Target, Star, Calendar, TrendingUp, CheckCircle, Lightbulb, Zap, Code, Lock, Search, Binary, Medal, Ghost } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { badges as allBadges } from '../data/notifications';
@@ -23,6 +23,7 @@ const badgeIcons = { Trophy, Flame, Code, Lock, Search, Zap, Binary, Target, Med
 
 export default function Profile() {
   const { user } = useApp();
+  const [progressRange, setProgressRange] = useState('weekly');
   if (!user) return null;
 
   const userBadges = allBadges.filter(b => user.badges?.includes(b.id));
@@ -31,6 +32,12 @@ export default function Profile() {
   const totalChallenges = Object.values(user.categoryStats || {}).reduce((s, v) => s + v.total, 0);
   const solvedCount = user.solvedChallenges?.length || 0;
   const completionPct = totalChallenges ? Math.round((solvedCount / totalChallenges) * 100) : 0;
+
+  const progressData = progressRange === 'weekly'
+    ? (user.weeklyProgress || [])
+    : (user.monthlyProgress || []);
+  const maxProgress = Math.max(1, ...progressData.map(p => p.points));
+  const totalProgress = progressData.reduce((s, p) => s + p.points, 0);
 
   const topCategories = Object.entries(user.categoryStats || {})
     .sort((a, b) => b[1].points - a[1].points);
@@ -50,6 +57,19 @@ export default function Profile() {
               background: 'linear-gradient(135deg, rgba(116,100,220,0.1) 0%, rgba(116,100,220,0.06) 50%, rgba(139,92,246,0.06) 100%)',
               position: 'relative',
             }}>
+              <div style={{
+                position: 'absolute', top: 14, left: 24, right: 24,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  fontFamily: 'var(--font-mono)', fontSize: '0.62rem',
+                  color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase',
+                }}>
+                  <Calendar size={12} color="var(--accent-green)" />
+                  Member since {new Date(user.joinDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
               <div style={{
                 position: 'absolute', bottom: -28, left: 24,
                 width: 56, height: 56, borderRadius: '50%',
@@ -91,9 +111,6 @@ export default function Profile() {
               ))}
 
               <div className="divider" style={{ margin: '16px 0' }} />
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                Joined {new Date(user.joinDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </div>
             </div>
           </div>
         </div>
@@ -148,6 +165,66 @@ export default function Profile() {
                 </div>
               ))}
             </div>
+
+            <div style={{
+              marginTop: 20, padding: '14px 16px',
+              background: 'rgba(116,100,220,0.06)',
+              border: '1px solid rgba(116,100,220,0.16)',
+              borderRadius: 10,
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <Flame size={16} color="var(--accent-orange)" style={{ flexShrink: 0 }} />
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, fontStyle: 'italic' }}>
+                Every expert was once a beginner. Ready to start a new streak?
+              </p>
+            </div>
+          </div>
+
+          {/* Progress overview */}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '24px', marginBottom: 20, animation: 'fadeInUp 0.4s ease 0.2s both' }}>
+            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+              <div className="section-title mb-0">Progress Overview</div>
+              <div className="toggle-pill">
+                <button className={progressRange === 'weekly' ? 'active' : ''} onClick={() => setProgressRange('weekly')}>Weekly</button>
+                <button className={progressRange === 'monthly' ? 'active' : ''} onClick={() => setProgressRange('monthly')}>Monthly</button>
+              </div>
+            </div>
+
+            <div className="d-flex align-items-center gap-3 mb-4">
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(61,221,208,0.1)', border: '1px solid rgba(61,221,208,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <TrendingUp size={18} color="var(--accent-cyan)" />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  {progressRange === 'weekly' ? 'Points earned this week' : 'Points earned this month'}
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-green)', lineHeight: 1.1 }}>
+                  {totalProgress.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {progressData.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', padding: '24px 0' }}>
+                No progress recorded yet. Go capture a flag!
+              </div>
+            ) : (
+              <div className="d-flex align-items-end justify-content-between gap-2" style={{ height: 150, paddingTop: 8 }}>
+                {progressData.map((p, i) => (
+                  <div key={i} className="d-flex flex-column justify-content-end align-items-center" style={{ flex: 1, height: '100%', minWidth: 0 }}>
+                    <div className="prog-bar" style={{
+                      height: p.points ? `${Math.max(8, (p.points / maxProgress) * 100)}%` : '2px',
+                      background: p.points
+                        ? 'linear-gradient(180deg, var(--accent-green), rgba(116,100,220,0.55))'
+                        : 'var(--bg-elevated)',
+                      boxShadow: p.points ? '0 0 10px rgba(116,100,220,0.3)' : 'none',
+                      opacity: p.points ? 1 : 0.5,
+                    }} title={`${p.label}: ${p.points} pts`} />
+                    <div className="prog-bar-label mt-1">{p.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Category performance */}

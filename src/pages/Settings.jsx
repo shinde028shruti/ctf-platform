@@ -6,6 +6,7 @@ import { authService } from '../services/authService';
 
 const TABS = [
   { id: 'profile',   icon: User,   label: 'Profile' },
+  { id: 'privacy',   icon: Eye,    label: 'Privacy' },
   { id: 'security',  icon: Lock,   label: 'Security' },
   { id: 'notif',     icon: Bell,   label: 'Notifications' },
   { id: 'danger',    icon: Trash2, label: 'Danger Zone' },
@@ -52,6 +53,8 @@ export default function Settings() {
   const [showPw, setShowPw] = useState(false);
 
   const [notifPrefs, setNotifPrefs] = useState({ ...NOTIF_DEFAULTS, ...(user?.notifPrefs || {}) });
+
+  const [visibility, setVisibility] = useState(user?.profileVisibility || 'public');
 
   const userType = user?.userType || null;
   const userOnboarding = user?.onboarding || null;
@@ -100,6 +103,13 @@ export default function Settings() {
       toast.success('Notification preferences saved.');
       setBusy(null);
     }, 400);
+  };
+
+  const saveVisibility = () => {
+    setBusy('privacy');
+    updateUser({ profileVisibility: visibility });
+    toast.success(visibility === 'public' ? 'Your profile is now public.' : 'Your profile is now private.');
+    setBusy(null);
   };
 
   const handleDelete = async () => {
@@ -172,6 +182,109 @@ export default function Settings() {
                   {busy === 'profile' ? <span className="spinner-border spinner-border-sm" /> : <Save size={14} />} Save Changes
                 </button>
               </Section>
+            </div>
+          )}
+
+          {tab === 'privacy' && (
+            <div className="animate-fade-in">
+              <Section title="Profile Visibility">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Show my profile publicly</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      {visibility === 'public'
+                        ? 'Other users can view your profile.'
+                        : 'Your profile is hidden from other users.'}
+                    </div>
+                  </div>
+                  <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer', flexShrink: 0 }}>
+                    <input type="checkbox" checked={visibility === 'public'} onChange={e => setVisibility(e.target.checked ? 'public' : 'private')} style={{ opacity: 0, width: 0, height: 0 }} />
+                    <span style={{
+                      position: 'absolute', inset: 0, borderRadius: 24,
+                      background: visibility === 'public' ? 'var(--accent-green)' : 'var(--bg-elevated)',
+                      border: `1px solid ${visibility === 'public' ? 'var(--accent-green)' : 'var(--border-bright)'}`,
+                      transition: 'all 0.25s',
+                    }}>
+                      <span style={{
+                        position: 'absolute', top: 3, left: visibility === 'public' ? 21 : 3,
+                        width: 16, height: 16, borderRadius: '50%',
+                        background: visibility === 'public' ? '#0A0917' : 'var(--text-muted)',
+                        transition: 'left 0.25s',
+                      }} />
+                    </span>
+                  </label>
+                </div>
+
+                <div style={{ marginTop: 20 }}>
+                  <button className="btn btn-primary d-flex align-items-center gap-2" onClick={saveVisibility} disabled={busy === 'privacy'} style={{ minWidth: 120 }}>
+                    {busy === 'privacy' ? <span className="spinner-border spinner-border-sm" /> : <Save size={14} />} Save Privacy
+                  </button>
+                </div>
+              </Section>
+
+              {visibility === 'public' ? (
+                <Section title="What Others See">
+                  {/*
+                    When public, only username, rank, streak, and score are exposed.
+                    Email, bio, badges and activity stay private.
+                  */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                    <div style={{
+                      width: 44, height: 44, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: 'var(--font-mono)', fontSize: '1rem', fontWeight: 900, color: '#0A0917', flexShrink: 0,
+                    }}>
+                      {(user?.username?.[0] || 'U').toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{user?.username}</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--accent-green)' }}>Public profile</div>
+                    </div>
+                  </div>
+                  <div className="row g-3 mb-2">
+                    <div className="col-6 col-md-3">
+                      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '12px' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Rank</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.05rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>#{user?.rank}</div>
+                      </div>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '12px' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Streak</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.05rem', fontWeight: 800, color: 'var(--accent-orange)' }}>{user?.streak} days</div>
+                      </div>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '12px' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Points</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.05rem', fontWeight: 800, color: 'var(--accent-green)' }}>{(user?.points || 0).toLocaleString()}</div>
+                      </div>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '12px' }}>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Username</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>{user?.username}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    Only these four fields are shared. Email, badges, and activity stay private.
+                  </div>
+                </Section>
+              ) : (
+                <Section title="Preview">
+                  <div className="d-flex align-items-center gap-3">
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <EyeOff size={18} color="var(--text-muted)" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>Profile hidden</div>
+                      <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>Other users cannot see your profile, rank, or stats.</div>
+                    </div>
+                  </div>
+                </Section>
+              )}
             </div>
           )}
 

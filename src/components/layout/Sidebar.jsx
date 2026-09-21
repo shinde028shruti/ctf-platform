@@ -74,6 +74,12 @@ export default function Sidebar() {
               {user.points?.toLocaleString()}
             </span>
           </div>
+          <div className="d-flex justify-content-between mb-1">
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Streak</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--accent-orange)', fontWeight: 700 }}>
+              {user.streak} days
+            </span>
+          </div>
           <div className="d-flex justify-content-between mb-2">
             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Rank</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>

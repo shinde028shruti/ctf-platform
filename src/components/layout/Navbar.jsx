@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Bell, Shield, LogOut, User, Settings, LayoutDashboard, Menu, Search, X } from 'lucide-react';
+import { Bell, Shield, LogOut, User, Settings, LayoutDashboard, Menu, Search, X, TerminalSquare } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import NotificationPanel from '../ui/NotificationPanel';
 import UniversalSearch from '../ui/UniversalSearch';
+import PowerShellTerminal from '../ui/PowerShellTerminal';
 import Sidebar from './Sidebar';
 
 export default function Navbar() {
@@ -14,12 +15,14 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [psOpen, setPsOpen] = useState(false);
   const notifRef = useRef(null);
   const profileRef = useRef(null);
 
   useEffect(() => {
     setMobileNavOpen(false);
     setSearchOpen(false);
+    setPsOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -94,6 +97,11 @@ export default function Navbar() {
 
           {isAuthenticated ? (
             <>
+              {/* PowerShell console */}
+              <button className="icon-btn" title="PowerShell console" onClick={() => { setPsOpen(o => !o); setNotifOpen(false); setProfileOpen(false); }}>
+                <TerminalSquare size={16} />
+              </button>
+
               {/* Notifications */}
               <div ref={notifRef} style={{ position: 'relative' }}>
                 <button className="icon-btn" onClick={() => { setNotifOpen(o => !o); setProfileOpen(false); }}>
@@ -166,6 +174,9 @@ export default function Navbar() {
           </div>
         </>
       )}
+
+      {/* PowerShell console drawer */}
+      {psOpen && <PowerShellTerminal onClose={() => setPsOpen(false)} />}
     </>
   );
 }

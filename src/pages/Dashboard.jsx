@@ -108,6 +108,10 @@ export default function Dashboard() {
   const level = Math.floor(user.points / 500) + 1;
   const levelPct = Math.round(((user.points % 500) / 500) * 100);
 
+  const completedChallenges = challenges
+    .filter(c => user.solvedChallenges?.includes(c.id))
+    .sort((a, b) => b.points - a.points);
+
   const categoryStats = Object.entries(user.categoryStats || {})
     .filter(([, v]) => v.solved > 0)
     .sort((a, b) => b[1].points - a[1].points)
@@ -141,6 +145,9 @@ export default function Dashboard() {
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--accent-green)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 10 }}>
                 <span className="status-dot green" style={{ marginRight: 8 }} />
                 Session Active
+                <span style={{ color: 'var(--text-muted)', marginLeft: 12, letterSpacing: '0.05em' }}>
+                  {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
               </div>
               <h1 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 800, margin: 0 }}>
                 Welcome back, <span style={{ color: 'var(--accent-green)' }}>{user.username}</span>.
@@ -148,7 +155,7 @@ export default function Dashboard() {
               <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0', fontSize: '0.95rem', maxWidth: 520 }}>
                 {isStudent
                   ? 'Follow your learning path. Challenges are curated to help you build skills step by step.'
-                  : 'Sharpen your skills. Break the challenges. Capture the flag.'}
+                  : 'Pick up where you left off, or jump into something new. Your next challenge is one click away.'}
               </p>
               <div className="d-flex flex-wrap gap-2 mt-3">
                 <span style={{
@@ -340,6 +347,48 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          <div className="animate-fade-in-up delay-400">
+            <div className="d-flex align-items-center justify-content-between mb-3">
+              <div className="section-title">Completed Challenges</div>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--accent-green)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                <CheckCircle size={12} /> {completedChallenges.length} captured
+              </span>
+            </div>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
+              {completedChallenges.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', padding: '24px 16px' }}>
+                  No challenges captured yet. Go break something!
+                </div>
+              ) : (
+                <div className="d-flex flex-column">
+                  {completedChallenges.map((c, i) => (
+                    <Link key={c.id} to={`/challenges/${c.id}`} className="text-decoration-none">
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '12px 20px',
+                        borderBottom: i < completedChallenges.length - 1 ? '1px solid var(--border-color)' : 'none',
+                        transition: 'background 0.15s',
+                      }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-elevated)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <CheckCircle size={16} color="var(--accent-green)" style={{ flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>
+                          <div className="d-flex align-items-center gap-2">
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--accent-green)' }}>{c.category}</span>
+                            <span className={`diff-badge diff-${c.difficulty.toLowerCase()}`}>{c.difficulty}</span>
+                          </div>
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-green)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>{c.points} pts</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
