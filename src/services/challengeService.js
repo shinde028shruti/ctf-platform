@@ -288,4 +288,71 @@ export const challengeService = {
     saveStoredChallenges(challenges);
     return challenges[index];
   },
+
+  /**
+   * Set or clear a scheduled publish time for a challenge. Admin only.
+   * TODO: Replace with PATCH /api/admin/challenges/:id/schedule
+   */
+  async scheduleChallenge(id, publishAt) {
+    await delay(300);
+    const challenges = getStoredChallenges();
+    const index = challenges.findIndex(c => c.id === Number(id));
+    if (index === -1) throw new Error('Challenge not found.');
+    challenges[index].publishAt = publishAt;
+    challenges[index].status = publishAt ? 'scheduled' : 'draft';
+    saveStoredChallenges(challenges);
+    return challenges[index];
+  },
+
+  /**
+   * Auto-publish any challenges whose scheduled time has passed. Returns ids published.
+   * TODO: Replace with a server-side scheduler
+   */
+  async resolveScheduled() {
+    await delay(150);
+    const challenges = getStoredChallenges();
+    const now = Date.now();
+    let changed = false;
+    const publishedIds = [];
+    challenges.forEach(c => {
+      if (c.status === 'scheduled' && c.publishAt && new Date(c.publishAt).getTime() <= now) {
+        c.status = 'published';
+        delete c.publishAt;
+        changed = true;
+        publishedIds.push(c.id);
+      }
+    });
+    if (changed) saveStoredChallenges(challenges);
+    return publishedIds;
+  },
+
+  /**
+   * Replace the entire challenge set with imported JSON. Admin only.
+   * TODO: Replace with POST /api/admin/challenges/import
+   */
+  async importChallenges(data) {
+    await delay(600);
+    const imported = Array.isArray(data) ? data : [data];
+    const challenges = getStoredChallenges();
+    const added = [];
+    imported.forEach(item => {
+      const existing = challenges.find(c => c.id === Number(item.id));
+      if (existing) {
+        Object.assign(existing, item);
+      } else {
+        const next = {
+          ...item,
+          id: item.id || Date.now() + added.length,
+          solves: item.solves || 0,
+          solved: false,
+          status: item.status || 'draft',
+          createdAt: item.createdAt || new Date().toISOString().split('T')[0],
+        };
+        challenges.push(next);
+        added.push(next);
+      }
+    });
+    saveStoredChallenges(challenges);
+    return { imported: imported.length, added: added.length };
+  },
 };

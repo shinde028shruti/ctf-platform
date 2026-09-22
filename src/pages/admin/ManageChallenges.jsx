@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, MoreVertical, Edit, Eye, Copy, ToggleLeft, ToggleRight, Trash2, Search, CheckCircle } from 'lucide-react';
+import { Plus, MoreVertical, Edit, Eye, Copy, ToggleLeft, ToggleRight, Trash2, Search, CheckCircle, Clock, Upload } from 'lucide-react';
 import { challengeService } from '../../services/challengeService';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
+import ExportMenu from '../../components/ui/ExportMenu';
+import { downloadExcel, downloadPdf, parseExcelFile } from '../../utils/exportUtils';
 
 function ActionMenu({ challenge, onAction }) {
   const [open, setOpen] = useState(false);
@@ -24,6 +26,7 @@ function ActionMenu({ challenge, onAction }) {
       label: challenge.status === 'published' ? 'Unpublish' : 'Publish',
       action: 'toggle', className: '',
     },
+    { icon: Clock,       label: 'Schedule',  action: 'schedule', className: '', color: 'var(--accent-orange)' },
     { icon: Trash2,      label: 'Delete',    action: 'delete',   className: 'danger' },
   ];
 
@@ -49,6 +52,36 @@ function ActionMenu({ challenge, onAction }) {
   );
 }
 
+function statusChip(c) {
+  const styles = {
+    published: { color: 'var(--diff-easy)', bg: 'rgba(16,185,129,0.1)' },
+    draft:     { color: 'var(--accent-yellow)', bg: 'rgba(234,179,8,0.1)' },
+    scheduled: { color: 'var(--accent-orange)', bg: 'rgba(249,115,22,0.12)' },
+  };
+  const s = styles[c.status] || styles.draft;
+  return (
+    <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 3 }}>
+      <span style={{
+        fontFamily: 'var(--font-mono)', fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase',
+        color: s.color, background: s.bg, padding: '2px 8px', borderRadius: 20, width: 'fit-content', letterSpacing: '0.05em',
+      }}>
+        {c.status}
+      </span>
+      {c.status === 'scheduled' && c.publishAt && (
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+          <Clock size={9} style={{ marginRight: 3, verticalAlign: 'middle' }} />
+          {String(c.publishAt).replace('T', ' ')}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function scheduledValue(v) {
+  if (!v) return '';
+  return String(v).replace(' ', 'T').slice(0, 16);
+}
+
 export default function ManageChallenges() {
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,15 +89,42 @@ export default function ManageChallenges() {
   const [deleteModal, setDeleteModal] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState('');
+  const [scheduleModal, setScheduleModal] = useState(null);
+  const [scheduleAt, setScheduleAt] = useState('');
+  const [scheduleBusy, setScheduleBusy] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState('');
+  const fileRef = useRef(null);
 
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+  const showToast = (msg, color = 'var(--accent-green)') => { setToast({ msg, color }); setTimeout(() => setToast(''), 3000); };
+
+  const load = async () => {
+    const list = await challengeService.getAllChallenges();
+    setChallenges(list);
+    return list;
+  };
 
   useEffect(() => {
+    (async () => { await load(); setLoading(false); })();
+  }, []);
+
+  // Auto-publish scheduled challenges every 30s
+  useEffect(() => {
     (async () => {
-      const list = await challengeService.getAllChallenges();
-      setChallenges(list);
-      setLoading(false);
+      const publishedIds = await challengeService.resolveScheduled();
+      if (publishedIds.length) {
+        setChallenges(await load());
+        showToast(`Auto-published ${publishedIds.length} scheduled challenge${publishedIds.length > 1 ? 's' : ''}.`);
+      }
     })();
+    const iv = setInterval(async () => {
+      const publishedIds = await challengeService.resolveScheduled();
+      if (publishedIds.length) {
+        setChallenges(await load());
+        showToast(`Auto-published ${publishedIds.length} scheduled challenge${publishedIds.length > 1 ? 's' : ''}.`);
+      }
+    }, 30000);
+    return () => clearInterval(iv);
   }, []);
 
   const filtered = challenges.filter(c =>
@@ -98,9 +158,105 @@ export default function ManageChallenges() {
       showToast(`Challenge ${updated.status === 'published' ? 'published' : 'unpublished'}.`);
       return;
     }
+    if (action === 'schedule') {
+      setScheduleAt(scheduledValue(challenge.publishAt));
+      setScheduleModal(challenge);
+      return;
+    }
     if (action === 'delete') {
       setDeleteModal(challenge);
     }
+  };
+
+  const confirmSchedule = async () => {
+    setScheduleBusy(true);
+    const updated = await challengeService.scheduleChallenge(scheduleModal.id, scheduleAt);
+    setChallenges(prev => prev.map(c => c.id === scheduleModal.id ? updated : c));
+    setScheduleBusy(false);
+    setScheduleModal(null);
+    if (updated.status === 'scheduled') {
+      showToast(`"${updated.title}" will auto-publish at ${scheduleAt.replace('T', ' ')}.`, 'var(--accent-orange)');
+    } else {
+      showToast(`Schedule cleared for "${updated.title}".`);
+    }
+  };
+
+  const exportChallenges = async (format) => {
+    setExportBusy(format);
+    const stamp = new Date().toISOString().slice(0, 10);
+    try {
+      if (format === 'excel') {
+        await downloadExcel({
+          filename: `challenges-${stamp}.xlsx`,
+          sheets: [
+            {
+              name: 'Overview',
+              rows: challenges.map(c => ({
+                'ID': c.id,
+                'Title': c.title,
+                'Category': c.category,
+                'Difficulty': c.difficulty,
+                'Points': c.points,
+                'Solves': c.solves,
+                'Status': c.status,
+                'Author': c.author,
+                'Created': c.createdAt,
+              })),
+            },
+            {
+              name: 'Full Data',
+              rows: challenges.map(c => ({ id: c.id, payload: JSON.stringify(c) })),
+            },
+          ],
+        });
+        showToast(`Exported ${challenges.length} challenge${challenges.length !== 1 ? 's' : ''} to Excel.`);
+      } else {
+        await downloadPdf({
+          filename: `challenges-${stamp}.pdf`,
+          title: 'CyberForge — Challenge Report',
+          subtitle: `${challenges.length} challenges · full inventory`,
+          orientation: 'landscape',
+          columns: [
+            { key: 'title',      label: 'Challenge' },
+            { key: 'category',   label: 'Category' },
+            { key: 'difficulty', label: 'Difficulty' },
+            { key: 'points',     label: 'Points' },
+            { key: 'solves',     label: 'Solves' },
+            { key: 'status',     label: 'Status' },
+            { key: 'createdAt',  label: 'Created' },
+          ],
+          rows: challenges,
+        });
+        showToast(`Exported ${challenges.length} challenge${challenges.length !== 1 ? 's' : ''} to PDF.`);
+      }
+    } catch {
+      showToast('Export failed.', 'var(--accent-red)');
+    }
+    setExportBusy('');
+  };
+
+  const importExcel = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImportBusy(true);
+    try {
+      const sheets = await parseExcelFile(file);
+      let items = [];
+      const full = sheets.find(s => s.name === 'Full Data');
+      if (full && full.rows.length) {
+        items = full.rows.map(r => (r.payload ? JSON.parse(r.payload) : r));
+      } else if (sheets[0]) {
+        items = sheets[0].rows;
+      }
+      if (!items.length) throw new Error('Empty workbook.');
+      const result = await challengeService.importChallenges(items);
+      await load();
+      showToast(`Imported ${result.imported} challenge${result.imported !== 1 ? 's' : ''} (${result.added} new).`);
+    } catch {
+      showToast('Import failed — invalid Excel file.', 'var(--accent-red)');
+    }
+    setImportBusy(false);
   };
 
   const confirmDelete = async () => {
@@ -121,13 +277,13 @@ export default function ManageChallenges() {
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 3000,
-          background: 'var(--bg-card)', border: '1px solid var(--accent-green)',
+          background: 'var(--bg-card)', border: `1px solid ${toast.color}`,
           borderRadius: 10, padding: '12px 20px',
           fontFamily: 'var(--font-mono)', fontSize: '0.85rem',
-          color: 'var(--accent-green)', boxShadow: 'var(--shadow-lg)',
+          color: toast.color, boxShadow: 'var(--shadow-lg)',
           animation: 'fadeInUp 0.3s ease',
         }}>
-          <CheckCircle size={14} style={{ marginRight: 8 }} /> {toast}
+          <CheckCircle size={14} style={{ marginRight: 8 }} /> {toast.msg}
         </div>
       )}
 
@@ -136,9 +292,16 @@ export default function ManageChallenges() {
           <div className="section-title mb-1">Admin</div>
           <h1 style={{ margin: 0 }}>Manage Challenges</h1>
         </div>
-        <Link to="/admin/challenges/new" className="btn btn-primary d-flex align-items-center gap-2">
-          <Plus size={16} /> Create Challenge
-        </Link>
+        <div className="d-flex gap-2 flex-wrap align-items-center">
+          <ExportMenu onExport={exportChallenges} busy={!!exportBusy} />
+          <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2" onClick={() => fileRef.current?.click()} disabled={importBusy}>
+            {importBusy ? <span className="spinner-border spinner-border-sm" /> : <Upload size={14} />} Import Excel
+          </button>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={importExcel} />
+          <Link to="/admin/challenges/new" className="btn btn-primary d-flex align-items-center gap-2">
+            <Plus size={16} /> Create Challenge
+          </Link>
+        </div>
       </div>
 
       {/* Search */}
@@ -182,14 +345,7 @@ export default function ManageChallenges() {
                     <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-green)' }}>{c.points}</td>
                     <td style={{ fontFamily: 'var(--font-mono)' }}>{c.solves}</td>
                     <td>
-                      <span style={{
-                        fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700,
-                        color: c.status === 'published' ? 'var(--diff-easy)' : 'var(--accent-yellow)',
-                        background: c.status === 'published' ? 'rgba(16,185,129,0.1)' : 'rgba(234,179,8,0.1)',
-                        padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase',
-                      }}>
-                        {c.status}
-                      </span>
+                      {statusChip(c)}
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{c.createdAt}</td>
                     <td><ActionMenu challenge={c} onAction={handleAction} /></td>
@@ -222,6 +378,41 @@ export default function ManageChallenges() {
             This action cannot be undone.
           </span>
         </p>
+      </Modal>
+
+      {/* Schedule modal */}
+      <Modal
+        open={!!scheduleModal}
+        onClose={() => setScheduleModal(null)}
+        title={`Schedule "${scheduleModal?.title}"`}
+        footer={
+          <>
+            <button className="btn btn-outline-secondary" onClick={() => setScheduleModal(null)}>Cancel</button>
+            <button
+              className="btn btn-warning d-flex align-items-center gap-2"
+              onClick={confirmSchedule}
+              disabled={scheduleBusy}
+              style={{ color: '#0A0917' }}
+            >
+              {scheduleBusy ? <span className="spinner-border spinner-border-sm" /> : <><Clock size={14} /> {scheduleAt ? 'Save Schedule' : 'Clear Schedule'}</>}
+            </button>
+          </>
+        }
+      >
+        <p style={{ color: 'var(--text-secondary)', marginTop: 0, fontSize: '0.875rem' }}>
+          Pick a date & time for this challenge to auto-publish. Clearing the field moves it back to draft.
+        </p>
+        <label className="form-label">Publish At</label>
+        <input
+          className="form-control"
+          type="datetime-local"
+          value={scheduleAt}
+          onChange={e => setScheduleAt(e.target.value)}
+          style={{ fontFamily: 'var(--font-mono)' }}
+        />
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 8, fontFamily: 'var(--font-mono)' }}>
+          The platform checks scheduled challenges every 30 seconds.
+        </div>
       </Modal>
     </div>
   );

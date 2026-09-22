@@ -37,6 +37,8 @@ import AdminUsers        from './pages/admin/AdminUsers';
 import AdminSubmissions  from './pages/admin/AdminSubmissions';
 import AdminSettings     from './pages/admin/AdminSettings';
 import AdminAuditLogs    from './pages/admin/AdminAuditLogs';
+import AdminAnalytics    from './pages/admin/AdminAnalytics';
+import AdminAnnouncements from './pages/admin/AdminAnnouncements';
 import AdminPlaceholder  from './pages/admin/AdminPlaceholder';
 
 // Route guards
@@ -114,6 +116,8 @@ function AppRoutes() {
           <Route path="categories"          element={<AdminCategories />} />
           <Route path="users"               element={<AdminUsers />} />
           <Route path="submissions"         element={<AdminSubmissions />} />
+          <Route path="analytics"           element={<AdminAnalytics />} />
+          <Route path="announcements"       element={<AdminAnnouncements />} />
           <Route path="settings"            element={<AdminSettings />} />
           <Route path="audit-logs"          element={<AdminAuditLogs />} />
           <Route path="events"              element={<AdminPlaceholder title="Event Management" />} />

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Search, FileText, CheckCircle2, XCircle, Clock, Eye } from 'lucide-react';
-import { adminSubmissions } from '../../data/admin';
+import React, { useState, useEffect } from 'react';
+import { Search, FileText, CheckCircle2, XCircle, Clock, Eye, Download } from 'lucide-react';
+import { adminService } from '../../services/adminService';
+import { downloadCsv } from '../../utils/exportUtils';
 
 function resultBadge(status) {
   const s = status === 'correct'
@@ -25,33 +26,57 @@ function truncateFlag(flag) {
 export default function AdminSubmissions() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const correct = adminSubmissions.filter(s => s.status === 'correct').length;
-  const wrong   = adminSubmissions.filter(s => s.status === 'wrong').length;
-  const totalPts = adminSubmissions.reduce((sum, s) => sum + s.points, 0);
+  useEffect(() => {
+    (async () => {
+      setSubmissions(await adminService.getSubmissions());
+      setLoading(false);
+    })();
+  }, []);
 
-  const filtered = adminSubmissions.filter(s =>
+  const correct = submissions.filter(s => s.status === 'correct').length;
+  const wrong   = submissions.filter(s => s.status === 'wrong').length;
+  const totalPts = submissions.reduce((sum, s) => sum + s.points, 0);
+
+  const filtered = submissions.filter(s =>
     (statusFilter === 'all' || s.status === statusFilter) &&
     (s.user.toLowerCase().includes(search.toLowerCase()) ||
      s.challenge.toLowerCase().includes(search.toLowerCase()) ||
      s.flag.toLowerCase().includes(search.toLowerCase()))
   );
 
+  const exportCsv = () => {
+    downloadCsv({
+      filename: `submissions-${new Date().toISOString().slice(0, 10)}.csv`,
+      columns: ['id', 'user', 'challenge', 'flag', 'status', 'points', 'submittedAt'],
+      rows: filtered,
+    });
+  };
+
   const statCards = [
-    { icon: FileText,   value: adminSubmissions.length, label: 'Submissions',    color: 'var(--accent-cyan)' },
-    { icon: CheckCircle2, value: correct,               label: 'Correct',        color: 'var(--accent-green)' },
-    { icon: XCircle,    value: wrong,                   label: 'Incorrect',      color: 'var(--accent-red)' },
-    { icon: Clock,      value: totalPts,                label: 'Total Points',   color: 'var(--accent-purple)' },
+    { icon: FileText,   value: submissions.length, label: 'Submissions',    color: 'var(--accent-cyan)' },
+    { icon: CheckCircle2, value: correct,          label: 'Correct',        color: 'var(--accent-green)' },
+    { icon: XCircle,    value: wrong,              label: 'Incorrect',      color: 'var(--accent-red)' },
+    { icon: Clock,      value: totalPts,           label: 'Total Points',   color: 'var(--accent-purple)' },
   ];
 
   return (
     <div className="page-container">
+      {loading ? (
+        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Loading submissions...</div>
+      ) : (
+        <>
       <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
         <div>
           <div className="section-title mb-1">Admin</div>
           <h1 style={{ margin: 0 }}>Submissions</h1>
         </div>
-        <div className="d-flex gap-2 flex-wrap">
+        <div className="d-flex gap-2 flex-wrap align-items-center">
+          <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2" onClick={exportCsv}>
+            <Download size={14} /> Export CSV
+          </button>
           {['all', 'correct', 'wrong'].map(f => (
             <button key={f} onClick={() => setStatusFilter(f)}
               className={`btn btn-sm ${statusFilter === f ? 'btn-primary' : 'btn-outline-secondary'}`}
@@ -123,10 +148,12 @@ export default function AdminSubmissions() {
                   </tr>
                 ))
               )}
-            </tbody>
-          </table>
+</tbody>
+            </table>
+          </div>
         </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

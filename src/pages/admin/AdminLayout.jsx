@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Flag, PlusCircle, Tag, Users, FileText, Calendar, Settings, ScrollText, ChevronLeft, Menu, Shield, X } from 'lucide-react';
+import { LayoutDashboard, Flag, PlusCircle, Tag, Users, FileText, Calendar, Settings, ScrollText, ChevronLeft, Menu, Shield, X, BarChart3, Megaphone } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 const adminNav = [
@@ -10,6 +10,8 @@ const adminNav = [
   { to: '/admin/categories',      icon: Tag,             label: 'Categories' },
   { to: '/admin/users',           icon: Users,           label: 'Users' },
   { to: '/admin/submissions',     icon: FileText,        label: 'Submissions' },
+  { to: '/admin/analytics',       icon: BarChart3,       label: 'Analytics' },
+  { to: '/admin/announcements',   icon: Megaphone,       label: 'Announcements' },
   // { to: '/admin/events',          icon: Calendar,        label: 'Events' },
   { to: '/admin/audit-logs',     icon: ScrollText,      label: 'Audit Logs' },
   { to: '/admin/settings',        icon: Settings,        label: 'Settings' },

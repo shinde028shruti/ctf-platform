@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, Trash2, Upload, CheckCircle, Globe, Server, File } from 'lucide-react';
+import { Plus, Trash2, Upload, CheckCircle, Globe, Server, File, Clock } from 'lucide-react';
 import { challengeService } from '../../services/challengeService';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
@@ -16,6 +16,7 @@ const EMPTY = {
   hints: [{ text: '', cost: 20 }],
   files: [],
   status: 'draft',
+  publishAt: '',
   connectionInfo: null,
   instanceEnabled: false,
   targetType: 'Web Application',
@@ -388,6 +389,47 @@ export default function CreateChallenge() {
                   </div>
                 )}
               </div>
+
+              {/* ── Scheduled Publishing ── */}
+              <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '24px' }}>
+                <div className="row g-3">
+                  <div className="col-12">
+                    <div className="d-flex align-items-center gap-2 mb-1">
+                      <Clock size={15} color="var(--accent-orange)" />
+                      <h5 style={{ fontWeight: 700, margin: 0 }}>Schedule Publish</h5>
+                    </div>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 14px' }}>
+                      Auto-publish this challenge at a set date & time. Clearing the field returns the challenge to draft.
+                    </p>
+                  </div>
+                  <div className="col-md-5">
+                    <Field label="Publish At">
+                      <input
+                        className="form-control"
+                        type="datetime-local"
+                        value={form.publishAt}
+                        onChange={e => set('publishAt', e.target.value)}
+                        style={{ fontFamily: 'var(--font-mono)' }}
+                      />
+                    </Field>
+                  </div>
+                  <div className="col-md-7 d-flex align-items-end">
+                    {form.publishAt ? (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)', fontSize: '0.75rem',
+                        color: 'var(--accent-orange)', background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.28)',
+                        borderRadius: 8, padding: '10px 14px', width: '100%', margin: '0 0 3px',
+                      }}>
+                        <Clock size={14} /> Scheduled for {new Date(form.publishAt).toLocaleString()}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 3px', padding: '10px 0' }}>
+                        No schedule set — use <strong>Schedule</strong> below to arm auto-publish.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -402,6 +444,14 @@ export default function CreateChallenge() {
         <div className="d-flex gap-3 flex-wrap">
           <button className="btn btn-outline-secondary d-flex align-items-center gap-2" onClick={() => save('draft')} disabled={saving}>
             {saving ? 'Saving...' : 'Save Draft'}
+          </button>
+          <button
+            className="btn btn-outline-primary d-flex align-items-center gap-2"
+            onClick={() => save('scheduled')}
+            disabled={saving || !form.publishAt}
+            title={form.publishAt ? `Auto-publish at ${form.publishAt.replace('T', ' ')}` : 'Set a publish date first'}
+          >
+            <Clock size={15} /> {isEdit ? 'Update Schedule' : 'Save & Schedule'}
           </button>
           <button
             className="btn btn-outline-primary d-flex align-items-center gap-2"

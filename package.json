@@ -13,12 +13,15 @@
     "@react-three/fiber": "^8.17.10",
     "bootstrap": "^5.3.3",
     "framer-motion": "^11.11.10",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.441.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
     "react-toastify": "^11.1.0",
-    "three": "^0.169.0"
+    "three": "^0.169.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

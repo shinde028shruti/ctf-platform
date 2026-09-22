@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Flag, Users, Plus, Eye, Layers, CheckCircle, FileText, Radio, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Flag, Users, Plus, Eye, Layers, CheckCircle, FileText, Radio, ArrowRight, ShieldCheck, Activity, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { challengeService } from '../../services/challengeService';
+import { adminService } from '../../services/adminService';
 import { useApp } from '../../context/AppContext';
 import StatCard from '../../components/ui/StatCard';
+import { downloadCsv } from '../../utils/exportUtils';
 
 const heroStyle = {
   background: 'linear-gradient(135deg, rgba(116,100,220,0.09) 0%, rgba(116,100,220,0.02) 45%, rgba(139,92,246,0.05) 100%)',
@@ -21,23 +23,86 @@ const quickActions = [
   { to: '/challenges',           label: 'View Platform',     icon: Eye,     color: 'var(--accent-orange)' },
 ];
 
-export default function AdminDashboard() {
-  const { user } = useApp();
-  const [challenges, setChallenges] = useState([]);
+function AuditPreview() {
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const list = await challengeService.getAllChallenges();
-      setChallenges(list);
+      setLogs((await adminService.getAuditLogs()).slice(0, 6));
       setLoading(false);
+    })();
+  }, []);
+
+  if (loading) {
+    return <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>Loading...</div>;
+  }
+
+  return (
+    <div className="d-flex flex-column">
+      {logs.length === 0 ? (
+        <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>No activity yet.</div>
+      ) : (
+        logs.map(log => (
+          <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{
+              width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+              background: 'rgba(139,92,246,0.12)', color: 'var(--accent-purple)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Activity size={13} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontWeight: 700, color: 'var(--accent-green)' }}>{log.actor}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--text-muted)' }}> {log.action.replace('.', ' · ')} </span>
+                <span style={{ fontWeight: 600 }}>{log.target}</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.64rem', color: 'var(--text-muted)' }}>{log.timestamp} · {log.ip}</div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+export default function AdminDashboard() {
+  const { user } = useApp();
+  const [challenges, setChallenges] = useState([]);
+  const [solves, setSolves] = useState([]);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const [list, s, u] = await Promise.all([
+        challengeService.getAllChallenges(),
+        adminService.getSolvesHistory(),
+        adminService.getUsers(),
+      ]);
+      setChallenges(list); setSolves(s); setAdminUsers(u); setLoading(false);
     })();
   }, []);
 
   const published = challenges.filter(c => c.status === 'published').length;
   const drafts     = challenges.filter(c => c.status === 'draft').length;
+  const scheduled  = challenges.filter(c => c.status === 'scheduled').length;
   const totalSolves = challenges.reduce((s, c) => s + (c.solves || 0), 0);
   const avgSolves = challenges.length ? Math.round(totalSolves / challenges.length) : 0;
+
+  const liveSolves = solves.filter(s => s.correct).length;
+  const liveAttempts = solves.length;
+
+  const recentSolves = [...solves].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)).slice(0, 8);
+  const challengeTitle = (id) => challenges.find(c => c.id === Number(id))?.title || `Challenge #${id}`;
+
+  const exportLeaderboard = () => {
+    const rows = [...adminUsers]
+      .sort((a, b) => b.points - a.points)
+      .map((u, i) => ({ rank: i + 1, username: u.username, email: u.email, role: u.role, solved: u.solved, points: u.points, status: u.status }));
+    downloadCsv({ filename: `leaderboard-${new Date().toISOString().slice(0, 10)}.csv`, columns: ['rank', 'username', 'email', 'role', 'solved', 'points', 'status'], rows });
+  };
 
   const byCategory = [...challenges.reduce((m, c) => {
     m.set(c.category, (m.get(c.category) || 0) + 1);
@@ -52,8 +117,9 @@ export default function AdminDashboard() {
     { label: 'Total Challenges', value: challenges.length, icon: Layers, color: 'var(--accent-cyan)', bg: 'rgba(61,221,208,0.12)' },
     { label: 'Published',        value: published, icon: CheckCircle, color: 'var(--accent-green)', bg: 'rgba(16,185,129,0.12)' },
     { label: 'Drafts',           value: drafts, icon: FileText, color: 'var(--accent-yellow)', bg: 'rgba(234,179,8,0.12)' },
+    { label: 'Scheduled',        value: scheduled, icon: Radio, color: 'var(--accent-orange)', bg: 'rgba(249,115,22,0.12)', hint: scheduled ? 'Auto-publish armed' : undefined },
     { label: 'Total Solves',     value: totalSolves, icon: Flag, color: 'var(--accent-purple)', bg: 'rgba(139,92,246,0.12)', animate: true },
-    { label: 'Avg Solves / Chal', value: avgSolves, icon: Radio, color: 'var(--accent-orange)', bg: 'rgba(249,115,22,0.12)' },
+    { label: 'Live Flags',       value: liveSolves, icon: Activity, color: 'var(--accent-green)', bg: 'rgba(16,185,129,0.12)', hint: `${liveAttempts} attempts recorded` },
   ];
 
   return (
@@ -114,7 +180,7 @@ export default function AdminDashboard() {
                   <div className="cf-progress-bar" style={{ width: `${publishPct}%` }} />
                 </div>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 6, fontFamily: 'var(--font-mono)' }}>
-                  {drafts} draft{ drafts === 1 ? '' : 's'} waiting · {avgSolves}/challenge avg solves
+                  {drafts} draft{drafts === 1 ? '' : 's'} · {scheduled} scheduled · {avgSolves}/challenge avg solves
                 </div>
               </div>
             </div>
@@ -159,9 +225,14 @@ export default function AdminDashboard() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div className="section-title">Recent Challenges</div>
-              <Link to="/admin/challenges" className="d-flex align-items-center gap-1" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                View all <ArrowRight size={13} />
-              </Link>
+              <div className="d-flex align-items-center gap-2">
+                <button onClick={exportLeaderboard} className="d-flex align-items-center gap-1" style={{ background: 'none', border: 'none', fontSize: '0.78rem', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                  <Download size={13} /> Export CSV
+                </button>
+                <Link to="/admin/challenges" className="d-flex align-items-center gap-1" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  View all <ArrowRight size={13} />
+                </Link>
+              </div>
             </div>
             {loading ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
@@ -232,6 +303,66 @@ export default function AdminDashboard() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Live activity feed */}
+      <div className="row g-4">
+        <div className="col-lg-8">
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="section-title d-flex align-items-center gap-2">
+                <span className="status-dot green" /> Recent Solves
+              </div>
+              <Link to="/admin/analytics" className="d-flex align-items-center gap-1" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Analytics <ArrowRight size={13} />
+              </Link>
+            </div>
+            {recentSolves.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+                No solve activity recorded yet.
+              </div>
+            ) : (
+              <div>
+                {recentSolves.map((s, i) => {
+                  const chal = challenges.find(c => c.id === Number(s.challengeId));
+                  return (
+                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 20px', borderBottom: i < recentSolves.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                        background: s.correct ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
+                        border: `1px solid ${s.correct ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.2)'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontFamily: 'var(--font-mono)', fontSize: '0.66rem', fontWeight: 800, color: 'var(--text-primary)',
+                      }}>
+                        {s.user.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ color: 'var(--accent-green)', fontWeight: 800 }}>{s.user}</span>{' '}
+                          {s.correct ? 'solved' : 'failed'}{' '}
+                          <span style={{ color: 'var(--text-secondary)' }}>{chal?.title || `#${s.challengeId}`}</span>
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--text-muted)' }}>{s.submittedAt}</div>
+                      </div>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', fontWeight: 800, color: s.correct ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                        {s.correct ? 'SOLVED' : 'MISS'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="col-lg-4">
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '18px 20px', height: '100%' }}>
+            <div className="section-title mb-3 d-flex align-items-center gap-2">
+              <Radio size={14} color="var(--accent-cyan)" /> Recent Admin Activity
+            </div>
+            <AuditPreview />
           </div>
         </div>
       </div>

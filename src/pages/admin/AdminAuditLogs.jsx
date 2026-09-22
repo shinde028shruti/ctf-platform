@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Search, ScrollText, ListFilter } from 'lucide-react';
-import { auditLogs } from '../../data/admin';
+import React, { useState, useEffect } from 'react';
+import { Search, ScrollText, ListFilter, Download } from 'lucide-react';
+import { adminService } from '../../services/adminService';
+import { downloadCsv } from '../../utils/exportUtils';
 
 const ACTION_COLORS = {
   'challenge.create':  'var(--accent-green)',
@@ -30,18 +31,39 @@ function actionBadge(action) {
 
 export default function AdminAuditLogs() {
   const [search, setSearch] = useState('');
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = auditLogs.filter(l =>
+  useEffect(() => {
+    (async () => {
+      setLogs(await adminService.getAuditLogs());
+      setLoading(false);
+    })();
+  }, []);
+
+  const filtered = logs.filter(l =>
     l.actor.toLowerCase().includes(search.toLowerCase()) ||
     l.action.toLowerCase().includes(search.toLowerCase()) ||
     l.target.toLowerCase().includes(search.toLowerCase()) ||
     l.ip.includes(search)
   );
 
-  const uniqueActors = [...new Set(auditLogs.map(l => l.actor))];
+  const uniqueActors = [...new Set(logs.map(l => l.actor))];
+
+  const exportCsv = () => {
+    downloadCsv({
+      filename: `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`,
+      columns: ['id', 'actor', 'action', 'target', 'ip', 'timestamp'],
+      rows: filtered,
+    });
+  };
 
   return (
     <div className="page-container">
+      {loading ? (
+        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Loading audit logs...</div>
+      ) : (
+        <>
       <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
         <div>
           <div className="section-title mb-1">Admin</div>
@@ -50,8 +72,13 @@ export default function AdminAuditLogs() {
             A record of administrative actions across the platform.
           </p>
         </div>
-        <div className="d-flex align-items-center gap-2" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--accent-yellow)' }}>
-          <ListFilter size={14} /> {filtered.length} / {auditLogs.length} entries
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2" onClick={exportCsv}>
+            <Download size={14} /> Export CSV
+          </button>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--accent-yellow)' }}>
+            <ListFilter size={14} /> {filtered.length} / {logs.length} entries
+          </span>
         </div>
       </div>
 
@@ -105,6 +132,8 @@ export default function AdminAuditLogs() {
           </table>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
