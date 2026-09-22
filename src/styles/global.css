@@ -935,8 +935,6 @@ select:focus-visible { outline: none; }
   position: relative;
   flex: 0 1 460px;
   min-width: 240px;
-  margin-left: auto;
-  margin-right: 300px;
 }
 .cf-search-mobile {
   position: relative;
@@ -945,10 +943,10 @@ select:focus-visible { outline: none; }
   margin: 0;
 }
 @media (max-width: 1199px) {
-  .cf-search-desktop { margin-right: 180px; min-width: 200px; }
+  .cf-search-desktop { flex: 0 1 380px; min-width: 200px; }
 }
 @media (max-width: 991px) {
-  .cf-search-desktop { margin-right: 70px; flex: 0 1 340px; min-width: 160px; }
+  .cf-search-desktop { flex: 0 1 340px; min-width: 160px; }
 }
 @media (max-width: 767px) {
   .cf-search-desktop { display: none; }
