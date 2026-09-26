@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, Sparkles } from '@react-three/drei';
+import { Float } from '@react-three/drei';
 import * as THREE from 'three';
 import SceneLoader from './SceneLoader';
 import { supportsWebGL, isMobileDevice } from './support';
@@ -115,15 +115,6 @@ function NetworkCore() {
             <meshBasicMaterial color="#A99EF6" toneMapped={false} />
           </mesh>
         ))}
-
-        <Sparkles
-          count={isMobileDevice ? 90 : 200}
-          scale={[6, 6, 6]}
-          size={2.4}
-          speed={0.35}
-          opacity={0.8}
-          color="#9BA6FF"
-        />
       </group>
     </group>
   );

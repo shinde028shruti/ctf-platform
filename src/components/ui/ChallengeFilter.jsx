@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
+import ThemedSelect from './ThemedSelect';
 
 const CATEGORIES = ['All', 'Web Exploitation', 'Cryptography', 'Reverse Engineering', 'Digital Forensics', 'OSINT', 'Networking', 'Binary Exploitation', 'Mobile Security', 'Steganography', 'Miscellaneous'];
 const DIFFICULTIES = ['All', 'Easy', 'Medium', 'Hard', 'Insane'];
@@ -54,26 +55,32 @@ export default function ChallengeFilter({ filters, onChange, total }) {
       {/* Filter row */}
       <div className="row g-2">
         <div className="col-12 col-sm-6 col-md-3">
-          <select className="form-select form-select-sm" value={filters.category} onChange={e => set('category', e.target.value)}>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
-          </select>
+          <ThemedSelect
+            value={filters.category}
+            options={CATEGORIES.map(c => ({ value: c, label: c === 'All' ? 'All Categories' : c }))}
+            onChange={v => set('category', v)}
+          />
         </div>
         <div className="col-6 col-sm-3 col-md-2">
-          <select className="form-select form-select-sm" value={filters.difficulty} onChange={e => set('difficulty', e.target.value)}>
-            {DIFFICULTIES.map(d => <option key={d} value={d}>{d === 'All' ? 'All Levels' : d}</option>)}
-          </select>
+          <ThemedSelect
+            value={filters.difficulty}
+            options={DIFFICULTIES.map(d => ({ value: d, label: d === 'All' ? 'All Levels' : d }))}
+            onChange={v => set('difficulty', v)}
+          />
         </div>
         <div className="col-6 col-sm-3 col-md-2">
-          <select className="form-select form-select-sm" value={filters.status} onChange={e => set('status', e.target.value)}>
-            <option value="All">All Status</option>
-            <option value="solved">Solved</option>
-            <option value="unsolved">Unsolved</option>
-          </select>
+          <ThemedSelect
+            value={filters.status}
+            options={STATUSES.map(s => ({ value: s, label: s === 'All' ? 'All Status' : s[0].toUpperCase() + s.slice(1) }))}
+            onChange={v => set('status', v)}
+          />
         </div>
         <div className="col-12 col-sm-6 col-md-3">
-          <select className="form-select form-select-sm" value={filters.sort} onChange={e => set('sort', e.target.value)}>
-            {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
+          <ThemedSelect
+            value={filters.sort}
+            options={SORTS}
+            onChange={v => set('sort', v)}
+          />
         </div>
       </div>
 

@@ -126,7 +126,10 @@ export default function PowerShellTerminal({ onClose }) {
 
   const handleKeyDown = (e) => {
     if (e.key === 'Escape') onClose();
-    if (e.key === 'Enter' && e.target.value) runCommand(e.target.value);
+    if (e.key === 'Enter') {
+      if (e.target.value) runCommand(e.target.value);
+      setInput('');
+    }
   };
 
   return (

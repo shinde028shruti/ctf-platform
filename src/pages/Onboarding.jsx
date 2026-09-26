@@ -99,7 +99,7 @@ function SelectionStep({ options, selected, onToggle, multi = false, title, subt
             ? (selected || []).includes(opt.value)
             : selected === opt.value;
           return (
-            <div key={opt.value} className={multi ? 'col-6 col-md-4' : 'col-12 col-sm-10 col-md-8'}>
+            <div key={opt.value} className={multi ? 'col-12 col-sm-6' : 'col-12 col-sm-10 col-md-8'}>
               <button
                 onClick={() => onToggle(opt.value)}
                 style={{
@@ -197,9 +197,9 @@ export default function Onboarding() {
   return (
     <div className="auth-page" style={{ padding: '40px 16px' }}>
       <div className="auth-bg" />
-      <div style={{ width: '100%', maxWidth: 680, position: 'relative', zIndex: 1 }}>
+      <div style={{ width: '100%', maxWidth: 900, position: 'relative', zIndex: 1 }}>
         {/* Progress bar */}
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 32, maxWidth: 760, marginLeft: 'auto', marginRight: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
               Step {step + 1} of {STEPS.length}
@@ -218,7 +218,7 @@ export default function Onboarding() {
         </div>
 
         {/* Step content */}
-        <div className="auth-card" style={{ padding: '32px 36px' }}>
+        <div className="auth-card" style={{ padding: '32px 36px', width: '100%', maxWidth: 760, marginLeft: 'auto', marginRight: 'auto' }}>
           {step === 0 && <WelcomeStep onNext={() => setStep(1)} />}
           {step === 1 && (
             <SelectionStep

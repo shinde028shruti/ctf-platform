@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Bell, Shield, LogOut, User, Settings, LayoutDashboard, Menu, Search, X, TerminalSquare } from 'lucide-react';
+import { Bell, Shield, LogOut, User, Settings, LayoutDashboard, Menu, Search, X, TerminalSquare, Home, Info } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import NotificationPanel from '../ui/NotificationPanel';
 import UniversalSearch from '../ui/UniversalSearch';
@@ -41,6 +41,8 @@ export default function Navbar() {
 
   const { unreadCount } = useApp();
   const isLanding = location.pathname === '/';
+  const isAbout = location.pathname === '/about';
+  const showSearch = !isLanding && !isAbout;
 
   const handleLogout = async () => {
     await logout();
@@ -80,12 +82,22 @@ export default function Navbar() {
         </Link>
 
         {/* Universal search (desktop) */}
-        {!isLanding && <UniversalSearch />}
+        {showSearch && <UniversalSearch />}
 
         {/* Right actions */}
         <div className="d-flex align-items-center gap-2 ms-auto">
+          {/* Nav links */}
+          <nav className="cf-nav-links d-flex align-items-center me-2">
+            <Link to="/" className={`cf-nav-link${location.pathname === '/' ? ' active' : ''}`}>
+              <Home size={15} /> Home
+            </Link>
+            <Link to="/about" className={`cf-nav-link${location.pathname === '/about' ? ' active' : ''}`}>
+              <Info size={15} /> About Us
+            </Link>
+          </nav>
+
           {/* Mobile search toggle */}
-          {!isLanding && (
+          {showSearch && (
             <button
               className="icon-btn d-md-none"
               aria-label="Toggle search"
@@ -151,15 +163,15 @@ export default function Navbar() {
             </>
           ) : (
             <div className="d-flex gap-2">
-              <Link to="/login" className="btn btn-outline-secondary btn-sm">Login</Link>
-              <Link to="/register" className="btn btn-primary btn-sm">Join</Link>
+              <Link to="/login" className="btn btn-outline-secondary btn-sm" style={{ padding: '5px 10px', fontSize: '0.9rem' }}>Login</Link>
+              <Link to="/register" className="btn btn-primary btn-sm" style={{ padding: '5px 10px', fontSize: '0.9rem' }}>Join</Link>
             </div>
           )}
         </div>
       </nav>
 
       {/* Mobile search bar */}
-      {!isLanding && searchOpen && (
+      {showSearch && searchOpen && (
         <div className="cf-mobile-search">
           <UniversalSearch mobile onNavigate={() => setSearchOpen(false)} />
         </div>

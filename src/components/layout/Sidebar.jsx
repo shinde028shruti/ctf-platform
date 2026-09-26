@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Flag, Trophy, Award,
-  User, Settings, Shield, BookOpen, Info
+  User, Settings, Shield, BookOpen
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -11,7 +11,6 @@ const navItems = [
   { to: '/challenges',  icon: Flag,            label: 'Challenges' },
   { to: '/leaderboard', icon: Trophy,          label: 'Leaderboard', color: 'var(--accent-green)' },
   { to: '/achievements', icon: Award,           label: 'Achievements' },
-  { to: '/about',       icon: Info,            label: 'About' },
 ];
 
 const accountItems = [

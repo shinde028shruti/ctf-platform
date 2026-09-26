@@ -1,10 +1,9 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, ChevronRight, Globe, Lock, Cpu, Search, Eye, Network, Terminal as TermIcon, Smartphone, Image, Puzzle, Trophy, Calendar, ArrowRight, Users, Flag, Star } from 'lucide-react';
+import { Shield, ChevronRight, Globe, Lock, Cpu, Search, Eye, Network, Terminal as TermIcon, Smartphone, Image, Puzzle, Trophy, ArrowRight, Users, Flag } from 'lucide-react';
 import { challenges, categories } from '../data/challenges';
 import { leaderboardUsers } from '../data/users';
-import { events } from '../data/events';
 import UserTypeSelector from '../components/ui/UserTypeSelector';
 
 const HeroScene = lazy(() => import('../components/three/HeroScene'));
@@ -51,7 +50,6 @@ function AnimatedCounter({ target, suffix = '' }) {
 export default function Landing() {
   const featured = challenges.filter(c => c.featured).slice(0, 3);
   const topUsers = leaderboardUsers.slice(0, 5);
-  const upcomingEvent = events.find(e => e.status === 'upcoming');
 
   return (
     <div>
@@ -154,40 +152,6 @@ export default function Landing() {
 
       {/* ── Student / Competitor ── */}
       <UserTypeSelector />
-
-      {/* ── About CyberForge ── */}
-      <section style={{ background: 'var(--bg-secondary)', padding: '80px 0', borderTop: '1px solid var(--border-color)' }}>
-        <div className="container">
-          <div className="text-center mb-5">
-            <div className="section-title mb-2">About Us</div>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Built by Hackers, for Hackers</h2>
-            <p style={{ color: 'var(--text-secondary)', maxWidth: 620, margin: '12px auto 0', lineHeight: 1.7 }}>
-              CyberForge CTF is a professional cybersecurity training and competition platform designed for learners
-              at every level — from complete beginners to seasoned security researchers. Every flag you capture
-              represents a real skill learned.
-            </p>
-          </div>
-
-          <div className="row g-4">
-            {[
-              { icon: Flag,    color: 'var(--accent-green)',  title: 'Jeopardy-Style CTF',   desc: 'Our challenges follow the Jeopardy format — solve problems across categories to earn points. No attack/defense complexity.' },
-              { icon: Globe,   color: 'var(--accent-cyan)',   title: 'Real-World Scenarios', desc: 'Challenges are modeled after real vulnerability classes seen in production environments and bug bounty programs.' },
-              { icon: Trophy,  color: 'var(--accent-yellow)', title: 'Competitive Events',   desc: 'Participate in timed events to compete for prizes and recognition on the global stage.' },
-              { icon: Users,   color: 'var(--accent-purple)', title: 'Community Driven',     desc: 'Challenges authored by security professionals and experienced CTF players from around the world.' },
-            ].map(({ icon: Icon, color, title, desc }, i) => (
-              <div key={title} className="col-md-6 col-lg-3 animate-fade-in-up" style={{ animationDelay: `${i * 0.06}s` }}>
-                <div className="cf-card p-4 h-100">
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color, marginBottom: 14 }}>
-                    <Icon size={20} />
-                  </div>
-                  <h5 style={{ fontWeight: 700, marginBottom: 8 }}>{title}</h5>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.7 }}>{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ── How CTF Works ── */}
       <section style={{ background: 'var(--bg-secondary)', padding: '80px 0', borderTop: '1px solid var(--border-color)' }}>
@@ -299,7 +263,7 @@ export default function Landing() {
       <section style={{ padding: '80px 0' }}>
         <div className="container">
           <div className="row g-5 align-items-stretch">
-            <div className="col-lg-6 d-flex flex-column">
+            <div className="col-lg-10 mx-auto d-flex flex-column">
               <div className="section-title mb-2">Leaderboard</div>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 8 }}>Top Hackers</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 24 }}>
@@ -336,62 +300,6 @@ export default function Landing() {
               <Link to="/leaderboard" className="btn btn-outline-primary mt-4 d-inline-flex align-items-center gap-2">
                 Full Leaderboard <ArrowRight size={16} />
               </Link>
-            </div>
-
-            {/* Upcoming Event */}
-            <div className="col-lg-6 d-flex flex-column">
-              <div className="section-title mb-2">Events</div>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 8 }}>Upcoming Competition</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: 24 }}>
-                Participate in timed CTF events to compete for prizes and recognition.
-              </p>
-              {upcomingEvent && (
-                <div style={{
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: 16, overflow: 'hidden',
-                  position: 'relative',
-                  flex: 1,
-                }}>
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(119,100,224,0.1) 0%, rgba(79,31,113,0.08) 100%)',
-                    padding: '20px',
-                    borderBottom: '1px solid var(--border-color)',
-                    position: 'relative',
-                  }}>
-                    <div className="d-flex align-items-center gap-2 mb-3">
-                      <span className="status-dot green" />
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--accent-green)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                        Registration Open
-                      </span>
-                    </div>
-                    <h3 style={{ fontFamily: 'var(--font-brand)', fontSize: '1.3rem', fontWeight: 800, marginBottom: 6, color: 'var(--text-primary)' }}>
-                      {upcomingEvent.title}
-                    </h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>
-                      {upcomingEvent.subtitle}
-                    </p>
-                  </div>
-                  <div className="row g-0">
-                    {[
-                      { label: 'Format', val: upcomingEvent.format },
-                      { label: 'Team Size', val: upcomingEvent.teamSize },
-                      { label: 'Participants', val: upcomingEvent.participants.toLocaleString() },
-                      { label: 'Prize Pool', val: '$10,000' },
-                    ].map(({ label, val }) => (
-                      <div key={label} className="col-6" style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)' }}>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>{label}</div>
-                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{val}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ padding: '20px' }}>
-                    <Link to="/events" className="btn btn-primary w-100">
-                      View Event Details
-                    </Link>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
