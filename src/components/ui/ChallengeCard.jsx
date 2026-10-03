@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Users, Tag } from 'lucide-react';
+import { CheckCircle, Users } from 'lucide-react';
 
 export default function ChallengeCard({ challenge, index = 0 }) {
   const navigate = useNavigate();

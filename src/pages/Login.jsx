@@ -77,7 +77,7 @@ export default function Login() {
               </defs>
             </svg>
           </Link>
-          <div className="auth-title">CYBERFORGE</div>
+          <div className="auth-title">FLAGHUNT</div>
         </div>
 
         <div className="auth-card">

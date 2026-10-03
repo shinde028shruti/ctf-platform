@@ -34,7 +34,7 @@ function SectionCard({ icon: Icon, title, children, right }) {
 }
 
 export default function AdminSettings() {
-  const [platform, setPlatform] = useState({ name: 'CyberForge', tagline: 'Break. Learn. Capture the Flag.', domain: 'cyberforge.io' });
+  const [platform, setPlatform] = useState({ name: 'FlagHunt', tagline: 'Break. Learn. Capture the Flag.', domain: 'cyberforge.io' });
   const [toggles, setToggles] = useState({
     allowRegistration: true,
     requireApproval:  false,

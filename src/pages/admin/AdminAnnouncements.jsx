@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Megaphone, Plus, Info, AlertTriangle, Wrench, Trash2, Edit, Eye, EyeOff, X } from 'lucide-react';
+import { Megaphone, Plus, Info, AlertTriangle, Wrench, Trash2, Edit, Eye, EyeOff, X, RotateCcw } from 'lucide-react';
 import { announcementService } from '../../services/announcementService';
 import { adminService } from '../../services/adminService';
 import { useApp } from '../../context/AppContext';
@@ -25,6 +25,7 @@ export default function AdminAnnouncements() {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const load = async () => {
     const list = await announcementService.getAnnouncements();
@@ -80,6 +81,15 @@ export default function AdminAnnouncements() {
     setAnnouncements(prev => prev.map(x => x.id === a.id ? next : x));
   };
 
+// Dismissals are per-account and client-side, so this only reopens the banners
+// for the admin's own browser — it cannot affect what players have closed.
+const resetDismissals = async () => {
+    setResetting(true);
+    await announcementService.resetDismissals();
+    await adminService.logAction(currentUser?.username || 'admin', 'announcement.reset_dismissals', 'Own browser');
+    setResetting(false);
+  };
+
   const now = Date.now();
   const liveCount = announcements.filter(a => a.active && (!a.showFrom || new Date(a.showFrom).getTime() <= now) && (!a.showUntil || new Date(a.showUntil).getTime() >= now)).length;
 
@@ -99,9 +109,19 @@ export default function AdminAnnouncements() {
             Broadcast to players — {liveCount} live right now.
           </p>
         </div>
-        <button className="btn btn-primary d-flex align-items-center gap-2" onClick={openCreate}>
-          <Plus size={16} /> New Announcement
-        </button>
+        <div className="d-flex gap-2 flex-wrap">
+          <button
+            className="btn btn-outline-secondary d-flex align-items-center gap-2"
+            onClick={resetDismissals}
+            disabled={resetting}
+            title="Dismissals are per-account, so this only reopens the banners in your own browser"
+          >
+            {resetting ? <span className="spinner-border spinner-border-sm" /> : <><RotateCcw size={15} /> Reset My Dismissals</>}
+          </button>
+          <button className="btn btn-primary d-flex align-items-center gap-2" onClick={openCreate}>
+            <Plus size={16} /> New Announcement
+          </button>
+        </div>
       </div>
 
       {rows.length === 0 ? (

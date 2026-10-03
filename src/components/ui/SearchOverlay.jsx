@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Flag, Users, Tag, Calendar, X } from 'lucide-react';
+import { Search, Flag, Users, Calendar, X } from 'lucide-react';
+import CategoryIcon from './CategoryIcon';
 import { useNavigate } from 'react-router-dom';
 import { challenges, categories } from '../../data/challenges';
 import { events } from '../../data/events';
@@ -30,7 +31,7 @@ export default function SearchOverlay({ onClose }) {
     const categoryResults = categories
       .filter(c => c.name.toLowerCase().includes(q))
       .slice(0, 2)
-      .map(c => ({ type: 'category', icon: Tag, label: c.name, sub: `${c.count} challenges`, color: 'var(--accent-purple)', to: `/challenges` }));
+      .map(c => ({ type: 'category', icon: CategoryIcon, label: c.name, sub: `${c.count} challenges`, color: 'var(--accent-purple)', to: `/challenges` }));
 
     const eventResults = events
       .filter(e => e.title.toLowerCase().includes(q))

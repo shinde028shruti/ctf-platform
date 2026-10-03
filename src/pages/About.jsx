@@ -7,19 +7,19 @@ export default function About() {
     <div className="page-container" style={{ maxWidth: 900 }}>
       <div className="page-header animate-fade-in-up">
         <div className="section-title mb-2">About</div>
-        <h1 style={{ margin: 0 }}>About CyberForge CTF</h1>
+        <h1 style={{ margin: 0 }}>About FlagHunt CTF</h1>
       </div>
 
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '32px', marginBottom: 24, animation: 'fadeInUp 0.4s ease' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
           <Shield size={40} color="var(--accent-green)" />
           <div>
-            <h2 style={{ fontFamily: 'var(--font-brand)', fontSize: '1.5rem', margin: 0 }}>CyberForge CTF</h2>
+            <h2 style={{ fontFamily: 'var(--font-brand)', fontSize: '1.5rem', margin: 0 }}>FlagHunt CTF</h2>
             <p style={{ color: 'var(--text-muted)', margin: 0, fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>Professional Cybersecurity Training Platform</p>
           </div>
         </div>
         <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: 16 }}>
-          CyberForge CTF is a professional cybersecurity training and competition platform designed for learners at all skill levels — from complete beginners to seasoned security researchers.
+          FlagHunt CTF is a professional cybersecurity training and competition platform designed for learners at all skill levels — from complete beginners to seasoned security researchers.
         </p>
         <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8, margin: 0 }}>
           Our challenges are inspired by real-world vulnerability classes found in bug bounty programs, penetration testing engagements, and security research. Every flag you capture represents a real skill learned.

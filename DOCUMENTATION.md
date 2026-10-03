@@ -38,7 +38,6 @@ A full-featured Capture The Flag (CTF) competition platform built as a **React s
 | `/admin/challenges/:id/edit` | Edit Challenge | Admin panel |
 | `/admin/categories` | Manage Categories | Admin panel |
 | `/admin/users` | Manage Users | Admin panel |
-| `/admin/submissions` | Manage Submissions | Admin panel |
 | `/admin/audit-logs` | Audit Logs | Admin panel |
 | `/admin/settings` | Admin Settings | Admin panel |
 | `/admin/events` | Events (placeholder/scaffolded) | Admin panel |
@@ -56,7 +55,7 @@ A full-featured Capture The Flag (CTF) competition platform built as a **React s
 - Get the **user panel** (top navbar + left sidebar) with access to Dashboard, Challenges, Leaderboard, Achievements, Events, Profile, and Settings.
 
 ### Admin
-- Same user-panel experience, **plus** `/admin/*` sections for managing challenges, categories, users, and submissions.
+- Same user-panel experience, **plus** `/admin/*` sections for managing challenges, categories, users, analytics, and announcements.
 - Admin sidebar is shown through `AdminLayout.jsx` (rendered inside `.admin-panel` wrapper).
 
 ### Sign-in types (same entry point)
@@ -89,7 +88,7 @@ Marketing / landing page with several sections:
 - **Stats bar** — typewriter-style rotating stats (participants, challenges, countries, prizes).
 - **Student / Competitor selector** — lets a visitor choose their role before continuing (routes to `/register` with the selected role).
 - **"What is a CTF?"** — explanation cards.
-- **Categories** — grid of challenge categories with icons.
+- **Categories** — grid of challenge categories, each using the shared shield-and-clock `CategoryIcon.jsx` tinted with that category's own colour.
 - **Featured challenges** — 3 preview challenge cards.
 - **Top hackers** — leaderboard preview (top 5 players with scores).
 - **Final CTA** — "Ready to hack?" call to action + footer.
@@ -158,6 +157,8 @@ A dockable terminal exposed by the navbar button. Provides a simulated PowerShel
 ### 5.7 Leaderboard (`/leaderboard`)
 - **Tabs**: Global / Weekly / Country / Category.
 - **Podium** — top 3 players with medals and animated positioning; country flag chips.
+- **Top-N graph** (`LeaderboardGraph.jsx`) — transparent SVG line chart, X = rank, Y = points. One coloured line segment per player (medal colours for the top 3, then theme violets/cyans), glowing area fill, node dots labelled with the handle, tooltips with points/solved/accuracy. Respects the active tab, filter and search.
+- **Your Rank strip** — the signed-in player's rank, points, solved and accuracy; medal badge for a top-3 rank, `#N` otherwise. Hidden when not logged in.
 - **Ranking table** — rows with rank, player, country, points, activities; me/highlight row if present.
 
 ### 5.8 Achievements (`/achievements`)
@@ -169,11 +170,11 @@ A dockable terminal exposed by the navbar button. Provides a simulated PowerShel
 - **Event list** — expandable event cards with date, location/online, details, and "Register" action.
 
 ### 5.10 Profile (`/profile`)
-- **Profile card** — avatar, username, rank, bio, social links.
-- **Stats** — solved, points, country rank.
+- **Profile card** — avatar, username, rank, bio.
+- **Stats** — global rank, total points, challenges solved, current streak, completion.
 - **Badges** — earned achievement badges.
 - **Weekly / Monthly progress** — chart bars.
-- **Category performance** — points per category.
+- **Category performance** — points per category, shown as its own card below the profile card.
 - **Activity log** — recent actions.
 
 ### 5.11 Settings (`/settings`)
@@ -191,7 +192,8 @@ Admin pages live under `/admin` with their own sidebar (`AdminLayout.jsx`) listi
 - **Create Challenge**
 - **Categories**
 - **Users**
-- **Submissions**
+- **Analytics**
+- **Announcements**
 - **Audit Logs**
 - **Settings**
 - (Events — commented out / scaffolded)
@@ -201,7 +203,7 @@ The admin sidebar shows a bright "Admin Panel" header.
 ### 6.1 Admin Dashboard (`/admin`)
 - **Stat cards** — total users, challenges, submissions, active containers.
 - **Charts** — submissions & user growth (bars/lines).
-- **Toast invite** examples and **Quick actions** — "Create Challenge", "Manage Users", "View Submissions", "View Audit Logs".
+- **Toast invite** examples and **Quick actions** — "Create Challenge", "Manage Challenges", "View Users", "View Platform".
 
 ### 6.2 Manage Challenges (`/admin/challenges`)
 - **Table** of challenges: category, title, difficulty, points, status (Draft/Published), solves; striped rows.
@@ -217,27 +219,24 @@ Multi-tab form:
 - Sticky action bar: **Save Draft**, **Preview** (shows an alert rather than a real preview), **Publish Challenge** (or Update & Publish when editing), **Cancel**.
 
 ### 6.4 Categories (`/admin/categories`)
-- **Read-only grid** of existing categories with name, icon, challenge count, "View" action.
+- **Read-only grid** of existing categories with name, shield-and-clock icon, challenge count, "View" action.
 - **Add category** form (mock) for new ones.
 
 ### 6.5 Users (`/admin/users`)
 - **Stats bar** — total users, active today, new this week, banned.
 - **Tables** filtered by **role** (All/Admin/Moderator/Player) and **status** (All/Active/Suspended/Banned).
 - Row actions: promote/demote role, suspend, delete.
+- **User detail drawer** — per-user solve history and **Recent Submissions** (user, challenge, flag, result, points).
 
-### 6.6 Submissions (`/admin/submissions`)
-- **Filter chips** by status (All / Pending / Correct / Incorrect).
-- **Table** of submissions: timestamp, user, challenge, flag submitted (masked), status, score.
-
-### 6.7 Audit Logs (`/admin/audit-logs`)
+### 6.6 Audit Logs (`/admin/audit-logs`)
 - **Filterable log feed** — actor, action, target.
 - Actions colored by **badge style** (login, create, update, delete, publish, etc.).
 
-### 6.8 Admin Settings (`/admin/settings`)
+### 6.7 Admin Settings (`/admin/settings`)
 - **Sections with toggle switches / sliders** (e.g. challenge registration, team limits, auto-grading). Values are editable mock controls.
 - Save button (feedback).
 
-### 6.9 Placeholder sections
+### 6.8 Placeholder sections
 Unfinished/scaffolded admin sections (`/admin/events` etc.) render `AdminPlaceholder` with an "under construction" message.
 
 ---

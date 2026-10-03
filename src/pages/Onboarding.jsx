@@ -9,7 +9,7 @@ import { useApp } from '../context/AppContext';
 import { onboardingService } from '../services/onboardingService';
 
 const STEPS = [
-  { id: 'welcome', title: 'Welcome to CyberForge' },
+  { id: 'welcome', title: 'Welcome to FlagHunt' },
   { id: 'skill', title: 'Your Skill Level' },
   { id: 'team', title: 'Team Interest' },
   { id: 'focus', title: 'Focus Areas' },
@@ -74,7 +74,7 @@ function WelcomeStep({ onNext }) {
         Welcome, Hacker!
       </h2>
       <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: 440, margin: '0 auto 32px', lineHeight: 1.7 }}>
-        Let's personalize your CyberForge experience. A few quick questions to tailor
+        Let's personalize your FlagHunt experience. A few quick questions to tailor
         challenges and features to your goals.
       </p>
       <button className="btn btn-primary d-inline-flex align-items-center gap-2" onClick={onNext}

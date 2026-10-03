@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import MedalIcon from '../components/ui/MedalIcon';
+import LeaderboardGraph from '../components/ui/LeaderboardGraph';
 import { leaderboardService } from '../services/leaderboardService';
 
 const TABS = ['Global', 'Weekly', 'Country/Region', 'Category']; 
@@ -53,6 +54,51 @@ function Podium({ users }) {
   );
 }
 
+function YourRankCard({ user }) {
+  const medal = user.rank <= 3;
+  return (
+    <div className="lb-you">
+      <div className={`lb-rank ${medal ? `top-${user.rank}` : ''} lb-you-rank`}>
+        {medal ? <MedalIcon tier={user.rank} size={20} /> : `#${user.rank}`}
+      </div>
+
+      <div className="lb-you-avatar">
+        {user.username[0].toUpperCase()}
+      </div>
+
+      <div className="lb-you-stat">
+        <div className="lb-you-stat-label">Player</div>
+        <div className="lb-you-stat-value" style={{ color: 'var(--accent-green)' }}>{user.username}</div>
+      </div>
+      <div className="lb-you-stat">
+        <div className="lb-you-stat-label">Rank</div>
+        <div className="lb-you-stat-value">#{user.rank}</div>
+      </div>
+      <div className="lb-you-stat">
+        <div className="lb-you-stat-label">Points</div>
+        <div className="lb-you-stat-value" style={{ color: 'var(--accent-green)' }}>
+          {user.points.toLocaleString()}
+        </div>
+      </div>
+      <div className="lb-you-stat">
+        <div className="lb-you-stat-label">Solved</div>
+        <div className="lb-you-stat-value">{user.solved}</div>
+      </div>
+      <div className="lb-you-stat lb-you-stat-wide">
+        <div className="lb-you-stat-label">Accuracy</div>
+        <div className="d-flex align-items-center gap-2">
+          <div className="lb-you-bar">
+            <div className="lb-you-bar-fill" style={{ width: `${user.accuracy}%` }} />
+          </div>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            {user.accuracy}%
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Leaderboard() {
   const [tab, setTab] = useState('Global');
   const [data, setData] = useState([]);
@@ -87,6 +133,8 @@ export default function Leaderboard() {
   });
 
   const top3 = visibleData.slice(0, 3);
+  const top10 = visibleData.slice(0, 10);
+  const currentUser = visibleData.find(u => u.isCurrentUser) || null;
 
   return (
     <div className="page-container">
@@ -165,6 +213,14 @@ export default function Leaderboard() {
               No results match your search.
             </div>
           )}
+
+          {/* Top 10 graph */}
+          {visibleData.length > 0 && (
+            <LeaderboardGraph players={top10} />
+          )}
+
+          {/* Current user rank */}
+          {currentUser && <YourRankCard user={currentUser} />}
 
           {/* Table */}
           <div className="table-scroll" style={{

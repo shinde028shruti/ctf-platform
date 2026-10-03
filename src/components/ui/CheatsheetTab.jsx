@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Copy, CheckCircle, Terminal, Tag } from 'lucide-react';
+import { Copy, CheckCircle, Terminal } from 'lucide-react';
+import CategoryIcon from './CategoryIcon';
 
 export default function CheatsheetTab({ cheatsheet }) {
   const [copiedIdx, setCopiedIdx] = useState(null);
@@ -94,7 +95,7 @@ export default function CheatsheetTab({ cheatsheet }) {
                 letterSpacing: '0.06em', textTransform: 'uppercase',
                 flexShrink: 0,
               }}>
-                <Tag size={9} /> {entry.category}
+                <CategoryIcon size={11} strokeWidth={2.4} /> {entry.category}
               </span>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                 {entry.description}

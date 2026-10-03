@@ -33,7 +33,7 @@ export const notifications = [
     id: 4,
     type: 'event',
     title: 'Event Registration Open',
-    message: 'CyberForge CTF 2026 registration is now open.',
+    message: 'FlagHunt CTF 2026 registration is now open.',
     detail: 'Register your team before October 10th.',
     timestamp: '2026-09-07T09:00:00Z',
     read: true,

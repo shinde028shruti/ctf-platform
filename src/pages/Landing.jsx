@@ -1,14 +1,13 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, ChevronRight, Globe, Lock, Cpu, Search, Eye, Network, Terminal as TermIcon, Smartphone, Image, Puzzle, Trophy, ArrowRight, Users, Flag } from 'lucide-react';
+import { Shield, ChevronRight, Trophy, ArrowRight, Users, Flag, Terminal as TermIcon } from 'lucide-react';
 import { challenges, categories } from '../data/challenges';
 import { leaderboardUsers } from '../data/users';
 import UserTypeSelector from '../components/ui/UserTypeSelector';
+import CategoryGlyph from '../components/ui/CategoryGlyph';
 
 const HeroScene = lazy(() => import('../components/three/HeroScene'));
-
-const catIconMap = { Globe, Lock, Cpu, Search, Eye, Network, Terminal: TermIcon, Smartphone, Image, Puzzle };
 
 function TypewriterText({ text, speed = 90, startDelay = 600 }) {
   const [count, setCount] = useState(0);
@@ -199,22 +198,22 @@ export default function Landing() {
             </Link>
           </div>
           <div className="row g-3">
-            {categories.map((cat, i) => {
-              const IconName = cat.icon;
-              return (
-                <div key={cat.id} className="col-6 col-md-4 col-lg-3 animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
-                  <Link to="/challenges" className="d-block text-decoration-none">
-                    <div className="cf-card p-3 h-100">
-                      <div style={{ width: 36, height: 36, borderRadius: 8, background: `${cat.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: cat.color, marginBottom: 10 }}>
-                        <Flag size={18} />
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)', marginBottom: 4 }}>{cat.name}</div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{cat.count} challenges</div>
+{categories.map((cat, i) => (
+              <div key={cat.id} className="col-6 col-md-4 col-lg-3 animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
+                <Link to={`/challenges?category=${encodeURIComponent(cat.name)}`} className="d-block text-decoration-none h-100">
+                  <div className="cf-card p-3 h-100 cat-tile" style={{ '--tile-color': cat.color }}>
+                    <div className="cat-tile-icon">
+                      <CategoryGlyph name={cat.name} size={20} color={cat.color} />
                     </div>
-                  </Link>
-                </div>
-              );
-            })}
+                    <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)', marginBottom: 4 }}>{cat.name}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{cat.count} challenges</div>
+                    <span className="cat-tile-arrow" aria-hidden="true">
+                      <ArrowRight size={14} />
+                    </span>
+                  </div>
+                </Link>
+              </div>
+            ))}
           </div>
         </div>
       </section>

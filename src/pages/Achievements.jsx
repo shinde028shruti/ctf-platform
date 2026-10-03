@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Award, Trophy, CheckCircle2, Compass, BookOpen } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { achievements, setInsaneChallengeIds } from '../data/achievements';
 import { challenges } from '../data/challenges';
 import AchievementBadge from '../components/ui/AchievementBadge';
+import { achievementService, resolveIcon, evaluate, describeCriteria } from '../services/achievementService';
 
 setInsaneChallengeIds(
   challenges.filter(c => c.difficulty === 'Insane' || c.id === 24).map(c => c.id)
@@ -11,10 +12,19 @@ setInsaneChallengeIds(
 
 export default function Achievements() {
   const { user } = useApp();
+  // Admin-authored badges live in localStorage; hidden ones are filtered out by
+  // the service so an admin can stage an achievement without exposing it.
+  const [custom, setCustom] = useState([]);
+
+  useEffect(() => {
+    let alive = true;
+    achievementService.getActiveAchievements().then(list => { if (alive) setCustom(list); });
+    return () => { alive = false; };
+  }, []);
 
   const stats = useMemo(() => {
     const solvedIdList = user?.solvedChallenges || [];
-    const list = achievements.map(a => ({
+    const builtin = achievements.map(a => ({
       ...a,
       earned: typeof a.check === 'function' ? a.check(user, solvedIdList) : false,
       progress:
@@ -22,9 +32,28 @@ export default function Achievements() {
           ? { gained: user?.categoryStats?.[a.category]?.solved || 0 }
           : null,
     }));
+    // Same card shape as a built-in, but the verdict comes from the stored rule.
+    const authored = custom.map(a => {
+      const { earned, gained, target } = evaluate(a.criteria, user);
+      return {
+        id: a.id,
+        name: a.name,
+        description: a.description,
+        category: a.category,
+        icon: resolveIcon(a.icon),
+        gradient: a.gradient,
+        glow: `${a.gradient[0]}66`,
+        reward: a.reward,
+        earned,
+        custom: true,
+        progress: { gained, target },
+        rule: describeCriteria(a.criteria),
+      };
+    });
+    const list = [...builtin, ...authored];
     const earnedCount = list.filter(a => a.earned).length;
     return { list, earnedCount, total: list.length };
-  }, [user]);
+  }, [user, custom]);
 
   const bonus = stats.list.filter(a => a.earned).reduce((s, a) => s + a.reward, 0);
   const pct = Math.round((stats.earnedCount / stats.total) * 100);
@@ -150,9 +179,23 @@ export default function Achievements() {
                     Reward earned: <span style={{ color: 'var(--accent-green)' }}>+{a.reward} pts</span>
                   </div>
                 ) : (
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    Reward: <span style={{ color: 'var(--text-muted)' }}>+{a.reward} pts</span>
-                  </div>
+                  <>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      {a.rule
+                        ? a.rule
+                        : <>Reward: <span style={{ color: 'var(--text-muted)' }}>+{a.reward} pts</span></>}
+                    </div>
+                    {a.progress?.target > 1 && (
+                      <>
+                        <div className="cf-progress" style={{ height: 4, marginTop: 8 }}>
+                          <div className="cf-progress-bar" style={{ width: `${Math.min(100, (a.progress.gained / a.progress.target) * 100)}%` }} />
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: 5 }}>
+                          {a.progress.gained} / {a.progress.target}
+                        </div>
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             </div>

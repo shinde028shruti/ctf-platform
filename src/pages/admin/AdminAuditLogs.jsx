@@ -14,6 +14,12 @@ const ACTION_COLORS = {
   'settings.update':   'var(--accent-orange)',
   'category.create':   'var(--accent-teal)',
   'submission.review': 'var(--violet-bright)',
+  'achievement.create': 'var(--accent-green)',
+  'achievement.update': 'var(--accent-cyan)',
+  'achievement.delete': 'var(--diff-hard)',
+  'announcement.create': 'var(--accent-purple)',
+  'announcement.update': 'var(--accent-teal)',
+  'announcement.delete': 'var(--diff-hard)',
 };
 
 function actionBadge(action) {

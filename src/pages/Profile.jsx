@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Trophy, Flag, Flame, Target, Star, Calendar, TrendingUp, CheckCircle, Lightbulb, Zap, Code, Lock, Search, Binary, Medal, Ghost } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { badges as allBadges } from '../data/notifications';
@@ -24,6 +25,7 @@ const badgeIcons = { Trophy, Flame, Code, Lock, Search, Zap, Binary, Target, Med
 export default function Profile() {
   const { user } = useApp();
   const [progressRange, setProgressRange] = useState('weekly');
+  const reduceMotion = useReducedMotion();
   if (!user) return null;
 
   const userBadges = allBadges.filter(b => user.badges?.includes(b.id));
@@ -38,6 +40,12 @@ export default function Profile() {
     : (user.monthlyProgress || []);
   const maxProgress = Math.max(1, ...progressData.map(p => p.points));
   const totalProgress = progressData.reduce((s, p) => s + p.points, 0);
+  /* Average over active days only. Averaging over every day would drag the line
+     down for rest days, which reads as a drop in effort rather than a rest. */
+  const activeDays = progressData.filter(p => p.points > 0);
+  const avgActive = activeDays.length ? Math.round(totalProgress / activeDays.length) : 0;
+  const peak = progressData.reduce((best, p) => (p.points > (best?.points ?? -1) ? p : best), null);
+  const bestDay = peak && peak.points > 0 ? peak : null;
 
   const topCategories = Object.entries(user.categoryStats || {})
     .sort((a, b) => b[1].points - a[1].points);
@@ -46,11 +54,13 @@ export default function Profile() {
     <div className="page-container">
       <div className="row g-4">
         {/* Profile card */}
-        <div className="col-lg-4">
-          <div style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border-color)',
-            borderRadius: 16, overflow: 'hidden', animation: 'fadeInUp 0.4s ease',
-          }}>
+        <div className="col-12 col-xl-5">
+          <div className="d-flex flex-column" style={{ gap: 20, height: '100%' }}>
+            <div style={{
+              background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+              borderRadius: 16, overflow: 'hidden', flex: 1,
+              animation: 'fadeInUp 0.4s ease',
+            }}>
             {/* Banner */}
             <div style={{
               height: 100,
@@ -109,14 +119,44 @@ export default function Profile() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
 
-              <div className="divider" style={{ margin: '16px 0' }} />
+            {/* Category performance — its own card, separated by the column gap */}
+            <div style={{
+              background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+              borderRadius: 16, padding: '24px', flexShrink: 0,
+              animation: 'fadeInUp 0.4s ease 0.2s both',
+            }}>
+              <div className="section-title mb-4">Category Performance</div>
+              {topCategories.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', padding: '8px 0' }}>
+                  No category data yet.
+                </div>
+              ) : topCategories.map(([cat, stats]) => (
+                <div key={cat} style={{ marginBottom: 16 }}>
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{cat}</span>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {stats.solved}/{stats.total}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--accent-green)', fontWeight: 700 }}>
+                        {stats.points} pts
+                      </span>
+                    </div>
+                  </div>
+                  <div className="cf-progress">
+                    <div className="cf-progress-bar" style={{ width: `${stats.total ? (stats.solved / stats.total) * 100 : 0}%` }} />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
         {/* Right column */}
-        <div className="col-lg-8">
+        <div className="col-12 col-xl-7">
           {/* Badges */}
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '24px', marginBottom: 20, animation: 'fadeInUp 0.4s ease 0.1s both' }}>
             <div className="section-title mb-4">Badges</div>
@@ -181,73 +221,86 @@ export default function Profile() {
           </div>
 
           {/* Progress overview */}
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '24px', marginBottom: 20, animation: 'fadeInUp 0.4s ease 0.2s both' }}>
-            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
-              <div className="section-title mb-0">Progress Overview</div>
-              <div className="toggle-pill">
-                <button className={progressRange === 'weekly' ? 'active' : ''} onClick={() => setProgressRange('weekly')}>Weekly</button>
-                <button className={progressRange === 'monthly' ? 'active' : ''} onClick={() => setProgressRange('monthly')}>Monthly</button>
+          <div className="po-card">
+            <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+              <div>
+                <div className="section-title mb-1">Progress Overview</div>
+                <div className="po-sub">
+                  {progressRange === 'weekly'
+                    ? 'Points captured each day of this week'
+                    : 'Points captured across the current cycle'}
+                </div>
+              </div>
+              <div className="d-flex align-items-center gap-3 flex-wrap">
+                {bestDay && (
+                  <span className="po-peak">
+                    <Flame size={12} /> Peak {bestDay.label} · {bestDay.points} pts
+                  </span>
+                )}
+                <div className="toggle-pill">
+                  <button className={progressRange === 'weekly' ? 'active' : ''} onClick={() => setProgressRange('weekly')}>Weekly</button>
+                  <button className={progressRange === 'monthly' ? 'active' : ''} onClick={() => setProgressRange('monthly')}>Monthly</button>
+                </div>
               </div>
             </div>
 
-            <div className="d-flex align-items-center gap-3 mb-4">
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(61,221,208,0.1)', border: '1px solid rgba(61,221,208,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <TrendingUp size={18} color="var(--accent-cyan)" />
-              </div>
-              <div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                  {progressRange === 'weekly' ? 'Points earned this week' : 'Points earned this month'}
+            <div className="po-stats">
+              {[
+                { icon: TrendingUp, label: 'Points earned', value: totalProgress.toLocaleString(), sub: progressRange === 'weekly' ? 'this week' : 'this cycle', tone: 'cyan' },
+                { icon: Flame, label: 'Best day', value: bestDay ? bestDay.label : '—', sub: bestDay ? `${bestDay.points.toLocaleString()} pts` : 'no points yet', tone: 'green' },
+                { icon: Zap, label: 'Avg / active day', value: avgActive.toLocaleString(), sub: 'pts', tone: 'purple' },
+                { icon: Target, label: 'Active days', value: `${activeDays.length}/${progressData.length}`, sub: progressData.length === 1 ? 'period' : 'periods', tone: 'orange' },
+              ].map(({ icon: Icon, label, value, sub, tone }) => (
+                <div key={label} className={`po-stat po-stat-${tone}`}>
+                  <div className="po-stat-icon"><Icon size={15} /></div>
+                  <div className="po-stat-body">
+                    <div className="po-stat-label">{label}</div>
+                    <div className="po-stat-value">{value}</div>
+                    <div className="po-stat-sub">{sub}</div>
+                  </div>
                 </div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-green)', lineHeight: 1.1 }}>
-                  {totalProgress.toLocaleString()}
-                </div>
-              </div>
+              ))}
             </div>
 
             {progressData.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', padding: '24px 0' }}>
-                No progress recorded yet. Go capture a flag!
-              </div>
+              <div className="po-empty">No progress recorded yet. Go capture a flag!</div>
             ) : (
-              <div className="d-flex align-items-end justify-content-between gap-2" style={{ height: 150, paddingTop: 8 }}>
-                {progressData.map((p, i) => (
-                  <div key={i} className="d-flex flex-column justify-content-end align-items-center" style={{ flex: 1, height: '100%', minWidth: 0 }}>
-                    <div className="prog-bar" style={{
-                      height: p.points ? `${Math.max(8, (p.points / maxProgress) * 100)}%` : '2px',
-                      background: p.points
-                        ? 'linear-gradient(180deg, var(--accent-green), rgba(116,100,220,0.55))'
-                        : 'var(--bg-elevated)',
-                      boxShadow: p.points ? '0 0 10px rgba(116,100,220,0.3)' : 'none',
-                      opacity: p.points ? 1 : 0.5,
-                    }} title={`${p.label}: ${p.points} pts`} />
-                    <div className="prog-bar-label mt-1">{p.label}</div>
+              <div className="po-plot">
+                {/* Reference lines sit behind the bars: the dashed average, plus a
+                    hairline at the halfway mark so bar heights stay readable. */}
+                <div className="po-line po-line-grid" style={{ bottom: '50%' }} aria-hidden="true" />
+                {avgActive > 0 && (
+                  <div className="po-line po-line-avg" style={{ bottom: `${Math.min(100, (avgActive / maxProgress) * 100)}%` }} aria-hidden="true">
+                    <span className="po-line-tag">AVG {avgActive}</span>
                   </div>
-                ))}
+                )}
+
+                <div className="po-cols">
+                  {progressData.map((p, i) => {
+                    const pct = (p.points / maxProgress) * 100;
+                    const barPct = p.points > 0 ? Math.max(9, pct) : 0;
+                    return (
+                      <div key={i} className={`po-col ${p.points > 0 ? 'is-active' : 'is-rest'}`}>
+                        <div className="po-tip">
+                          <span className="po-tip-label">{p.label}</span>
+                          <span className="po-tip-value">{p.points.toLocaleString()} pts</span>
+                        </div>
+                        {p.points > 0 && (
+                          <span className="po-value" style={{ bottom: `calc(${barPct}% + 6px)` }}>{p.points}</span>
+                        )}
+                        <motion.div
+                          className="po-bar"
+                          initial={{ height: 0 }}
+                          animate={{ height: p.points > 0 ? `${barPct}%` : '3px' }}
+                          transition={reduceMotion ? { duration: 0 } : { duration: 0.5, delay: i * 0.04, ease: 'easeOut' }}
+                        />
+                        <div className="po-xlabel">{p.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
-          </div>
-
-          {/* Category performance */}
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '24px', marginBottom: 20, animation: 'fadeInUp 0.4s ease 0.2s both' }}>
-            <div className="section-title mb-4">Category Performance</div>
-            {topCategories.map(([cat, stats]) => (
-              <div key={cat} style={{ marginBottom: 18 }}>
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{cat}</span>
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {stats.solved}/{stats.total}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--accent-green)', fontWeight: 700 }}>
-                      {stats.points} pts
-                    </span>
-                  </div>
-                </div>
-                <div className="cf-progress">
-                  <div className="cf-progress-bar" style={{ width: `${stats.total ? (stats.solved / stats.total) * 100 : 0}%` }} />
-                </div>
-              </div>
-            ))}
           </div>
 
           {/* Recent activity */}

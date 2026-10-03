@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 const DEFAULT_LINES = [
-  { type: 'cmd', text: './initialize_cyberforge.sh', delay: 0 },
-  { type: 'out', text: 'Initializing CyberForge CTF Platform...', delay: 600 },
+  { type: 'cmd', text: './initialize_flaghunt.sh', delay: 0 },
+  { type: 'out', text: 'Initializing FlagHunt CTF Platform...', delay: 600 },
   { type: 'out', text: 'Loading challenge database...           [OK]', delay: 1100 },
   { type: 'out', text: 'Verifying cryptographic modules...     [OK]', delay: 1600 },
   { type: 'out', text: 'Starting challenge instances...        [OK]', delay: 2100 },
@@ -36,7 +36,7 @@ export default function Terminal({ lines = DEFAULT_LINES, className = '' }) {
         <span className="terminal-dot yellow" />
         <span className="terminal-dot green" />
         <span style={{ marginLeft: 8, fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          cyberforge — bash
+          flaghunt — bash
         </span>
       </div>
       <div className="terminal-body" ref={bodyRef} style={{ minHeight: 180 }}>

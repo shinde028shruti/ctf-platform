@@ -78,7 +78,7 @@ export default function Navbar() {
               </defs>
             </svg>
           </div>
-          <span className="brand-name d-none d-sm-block">CyberForge</span>
+          <span className="brand-name d-none d-sm-block">FlagHunt</span>
         </Link>
 
         {/* Universal search (desktop) */}

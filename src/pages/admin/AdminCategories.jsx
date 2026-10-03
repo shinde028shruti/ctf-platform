@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, Search, Tag, Layers, Puzzle, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Layers, Puzzle, Pencil, Trash2, LayoutGrid } from 'lucide-react';
+import CategoryGlyph from '../../components/ui/CategoryGlyph';
 import { categories, challenges } from '../../data/challenges';
 
 export default function AdminCategories() {
@@ -16,7 +17,7 @@ export default function AdminCategories() {
   );
 
   const statCards = [
-    { icon: Tag,    value: categories.length,  label: 'Categories',    color: 'var(--accent-cyan)' },
+    { icon: LayoutGrid, value: categories.length,  label: 'Categories',    color: 'var(--accent-cyan)' },
     { icon: Layers, value: challenges.length,  label: 'Challenges',    color: 'var(--accent-green)' },
     { icon: Puzzle, value: enriched.reduce((s, c) => s + c.challengeCount, 0), label: 'Total Challenges', color: 'var(--accent-purple)' },
   ];
@@ -79,7 +80,7 @@ export default function AdminCategories() {
                           background: `${c.color}1f`, border: `1px solid ${c.color}40`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                          <Tag size={16} color={c.color} />
+                          <CategoryGlyph name={c.name} size={17} color={c.color} />
                         </div>
                         <div>
                           <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{c.name}</div>

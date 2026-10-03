@@ -1,9 +1,9 @@
 export const events = [
   {
     id: 1,
-    title: 'CyberForge CTF 2026',
+    title: 'FlagHunt CTF 2026',
     subtitle: 'Online Cybersecurity Competition',
-    description: 'The flagship annual CTF competition by CyberForge. Compete against thousands of hackers worldwide across all challenge categories. Prizes worth $10,000 await the top teams.',
+    description: 'The flagship annual CTF competition by FlagHunt. Compete against thousands of hackers worldwide across all challenge categories. Prizes worth $10,000 await the top teams.',
     startDate: '2026-10-12T00:00:00Z',
     endDate: '2026-10-14T23:59:00Z',
     participants: 1284,
@@ -17,7 +17,7 @@ export const events = [
       { place: '1st Place', reward: '$5,000 + Trophy + Lifetime Pro Membership' },
       { place: '2nd Place', reward: '$2,500 + Certificate' },
       { place: '3rd Place', reward: '$1,000 + Certificate' },
-      { place: 'Top 10', reward: 'CyberForge Merchandise Pack' },
+      { place: 'Top 10', reward: 'FlagHunt Merchandise Pack' },
       { place: 'Best Writeup', reward: '$500 Special Award' },
     ],
     categories: ['Web Exploitation', 'Cryptography', 'Reverse Engineering', 'Binary Exploitation', 'Forensics', 'OSINT', 'Miscellaneous'],
@@ -59,7 +59,7 @@ export const events = [
     teamSize: 'Solo only',
     difficulty: 'Beginner to Intermediate',
     prizes: [
-      { place: '1st Place', reward: '$500 + CyberForge Pro (6 months)' },
+      { place: '1st Place', reward: '$500 + FlagHunt Pro (6 months)' },
       { place: '2nd Place', reward: '$250 + Certificate' },
       { place: '3rd Place', reward: '$100 + Certificate' },
     ],

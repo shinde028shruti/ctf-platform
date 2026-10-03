@@ -4,8 +4,8 @@ import { useApp } from '../../context/AppContext';
 import { challenges } from '../../data/challenges';
 
 const BANNER = [
-  'Windows PowerShell for CyberForge CTF',
-  'Copyright (C) CyberForge. All rights reserved.',
+  'Windows PowerShell for FlagHunt CTF',
+  'Copyright (C) FlagHunt. All rights reserved.',
   '',
   'Type "help" to see available commands.',
 ];

@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Flag, PlusCircle, Tag, Users, FileText, Calendar, Settings, ScrollText, ChevronLeft, Menu, Shield, X, BarChart3, Megaphone } from 'lucide-react';
+import { LayoutDashboard, Flag, PlusCircle, Users, Calendar, Settings, ScrollText, ChevronLeft, Menu, Shield, X, BarChart3, Megaphone, Trophy } from 'lucide-react';
+import CategoryIcon from '../../components/ui/CategoryIcon';
 import { useApp } from '../../context/AppContext';
 
 const adminNav = [
   { to: '/admin',                 icon: LayoutDashboard, label: 'Dashboard',         end: true },
   { to: '/admin/challenges',      icon: Flag,            label: 'Challenges' },
   { to: '/admin/challenges/new',  icon: PlusCircle,      label: 'Create Challenge' },
-  { to: '/admin/categories',      icon: Tag,             label: 'Categories' },
+  { to: '/admin/categories',      icon: CategoryIcon,   label: 'Categories' },
   { to: '/admin/users',           icon: Users,           label: 'Users' },
-  { to: '/admin/submissions',     icon: FileText,        label: 'Submissions' },
   { to: '/admin/analytics',       icon: BarChart3,       label: 'Analytics' },
   { to: '/admin/announcements',   icon: Megaphone,       label: 'Announcements' },
+  { to: '/admin/achievements',    icon: Trophy,          label: 'Achievements' },
   // { to: '/admin/events',          icon: Calendar,        label: 'Events' },
   { to: '/admin/audit-logs',     icon: ScrollText,      label: 'Audit Logs' },
   { to: '/admin/settings',        icon: Settings,        label: 'Settings' },
@@ -33,7 +34,7 @@ export default function AdminLayout() {
       )}
 
       {/* Sidebar */}
-      <aside className="cf-sidebar d-none d-lg-flex flex-column" style={{ height: '100%', minHeight: '100%', position: 'static', marginTop: 0, paddingTop: 24 }}>
+      <aside className="cf-sidebar d-none d-lg-flex flex-column" style={{ height: '100%', minHeight: '100%', position: 'static' }}>
         <div className="sidebar-section-label">Admin</div>
         {adminNav.map(({ to, icon: Icon, label, end }) => (
           <NavLink

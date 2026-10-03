@@ -11,7 +11,7 @@ export default function Footer() {
             <div className="d-flex align-items-center gap-2 mb-3">
               <Shield size={22} color="var(--accent-green)" />
               <span className="brand" style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-green)' }}>
-                CyberForge CTF
+FlagHunt CTF
               </span>
             </div>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.7, maxWidth: 300 }}>
@@ -53,7 +53,7 @@ export default function Footer() {
 
         <div className="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-2">
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            © 2026 CyberForge CTF. All rights reserved.
+            © 2026 FlagHunt CTF. All rights reserved.
           </span>
           <div className="d-flex gap-3">
             {['Privacy Policy', 'Terms of Service', 'Rules'].map(l => (

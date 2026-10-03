@@ -213,7 +213,7 @@ export default function ManageChallenges() {
       } else {
         await downloadPdf({
           filename: `challenges-${stamp}.pdf`,
-          title: 'CyberForge — Challenge Report',
+          title: 'FlagHunt — Challenge Report',
           subtitle: `${challenges.length} challenges · full inventory`,
           orientation: 'landscape',
           columns: [

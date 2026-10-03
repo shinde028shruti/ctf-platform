@@ -10,7 +10,7 @@ import Terminal from '../components/ui/Terminal';
 import { challenges, categories } from '../data/challenges';
 
 const termLines = [
-  { type: 'cmd', text: './cyberforge --status', delay: 300 },
+  { type: 'cmd', text: './flaghunt --status', delay: 300 },
   { type: 'out', text: 'Platform: ONLINE', delay: 900 },
   { type: 'out', text: 'Active challenges: 18', delay: 1300 },
   { type: 'success', text: 'Keep hacking, operator.', delay: 2300 },

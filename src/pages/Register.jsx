@@ -74,9 +74,9 @@ export default function Register() {
               </defs>
             </svg>
           </Link>
-          <div className="auth-title">CYBERFORGE</div>
+          <div className="auth-title">FLAGHUNT</div>
           <p style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', marginTop: 4 }}>
-            Join the CYBERFORGE. Prove your skills.
+            Join FLAGHUNT. Prove your skills.
           </p>
         </div>
 
