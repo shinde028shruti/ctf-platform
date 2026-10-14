@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, ChevronRight, Trophy, ArrowRight, Users, Flag, Terminal as TermIcon } from 'lucide-react';
 import { challenges, categories } from '../data/challenges';
-import { leaderboardUsers } from '../data/users';
+import { leaderboardService } from '../services/leaderboardService';
 import UserTypeSelector from '../components/ui/UserTypeSelector';
 import CategoryGlyph from '../components/ui/CategoryGlyph';
 
@@ -48,7 +48,22 @@ function AnimatedCounter({ target, suffix = '' }) {
 
 export default function Landing() {
   const featured = challenges.filter(c => c.featured).slice(0, 3);
-  const topUsers = leaderboardUsers.slice(0, 5);
+  const [topUsers, setTopUsers] = useState([]);
+
+  // Preview the real global board; if it is empty or unreachable we simply
+  // show an empty state rather than fabricated rankings.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await leaderboardService.getGlobalLeaderboard({ limit: 5 });
+        if (!cancelled && Array.isArray(list)) setTopUsers(list.slice(0, 5));
+      } catch {
+        if (!cancelled) setTopUsers([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div>
@@ -269,6 +284,11 @@ export default function Landing() {
                 Compete against hackers worldwide. Every solved challenge earns points and improves your global ranking.
               </p>
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden', flex: 1 }}>
+                {topUsers.length === 0 && (
+                  <div style={{ padding: '20px 16px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>
+                    No rankings yet — solve a challenge to be the first.
+                  </div>
+                )}
                 {topUsers.map((u, i) => (
                   <div key={u.id} style={{
                     display: 'flex', alignItems: 'center', padding: '10px 16px',

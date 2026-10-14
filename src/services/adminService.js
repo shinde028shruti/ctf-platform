@@ -7,6 +7,7 @@
 
 import { adminUsers as mockUsers, adminSubmissions as mockSubmissions, auditLogs as mockAuditLogs } from '../data/admin';
 import { solveEvents as mockSolves } from '../data/solves';
+import { api } from './api';
 
 const USERS_KEY = 'cyberforge_admin_users';
 const SUBMISSIONS_KEY = 'cyberforge_admin_submissions';
@@ -60,31 +61,56 @@ export const adminService = {
     return next;
   },
 
-  async updateUserStatus(id, status, reason = '') {
-    await delay();
-    const users = read(USERS_KEY, mockUsers);
-    const index = users.findIndex(u => u.id === Number(id));
-    if (index === -1) throw new Error('User not found.');
-    users[index] = { ...users[index], status, statusNote: reason || users[index].statusNote };
-    write(USERS_KEY, users);
-    return users[index];
+  /* ---------------------------------------------------------------- */
+  /* Real admin user-management API (Admin -> Users page).            */
+  /*                                                                    */
+  /* These call the Django REST backend at /api/v1/admin/. Errors are   */
+  /* thrown as ApiError with a humanised `.message` by api.js.          */
+  /* ---------------------------------------------------------------- */
+
+  async listUsers({ page = 1, pageSize = 20, search = '', deleted = false } = {}) {
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('page_size', String(pageSize));
+    const term = (search || '').trim();
+    if (term) params.set('search', term);
+    if (deleted) params.set('deleted', 'true');
+    return api.get(`/admin/users/?${params.toString()}`);
   },
 
-  async updateUserRole(id, role) {
-    await delay();
-    const users = read(USERS_KEY, mockUsers);
-    const index = users.findIndex(u => u.id === Number(id));
-    if (index === -1) throw new Error('User not found.');
-    users[index] = { ...users[index], role };
-    write(USERS_KEY, users);
-    return users[index];
+  async getUser(id, { deleted = false } = {}) {
+    const suffix = deleted ? '?deleted=true' : '';
+    return api.get(`/admin/users/${id}/${suffix}`);
   },
 
-  async deleteUser(id) {
-    await delay();
-    const users = read(USERS_KEY, mockUsers);
-    const filtered = users.filter(u => u.id !== Number(id));
-    write(USERS_KEY, filtered);
-    return { success: true };
+  async createUser(payload) {
+    return api.post('/admin/users/', payload);
+  },
+
+  async updateUser(id, payload) {
+    return api.patch(`/admin/users/${id}/`, payload);
+  },
+
+  async removeUser(id) {
+    return api.delete(`/admin/users/${id}/`);
+  },
+
+  async restoreUser(id) {
+    return api.post(`/admin/users/${id}/restore/`, {});
+  },
+
+  async setUserStatus(id, status, statusNote = '') {
+    return api.patch(`/admin/users/${id}/status/`, {
+      status,
+      status_note: statusNote || '',
+    });
+  },
+
+  async setUserGroups(id, groupIds) {
+    return api.patch(`/admin/users/${id}/groups/`, { groups: groupIds });
+  },
+
+  async listGroups() {
+    return api.get('/admin/groups/');
   },
 };

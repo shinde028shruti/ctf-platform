@@ -5,6 +5,7 @@ import {
   Swords, GraduationCap,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import useGreeting from '../hooks/useGreeting';
 import StatCard from '../components/ui/StatCard';
 import Terminal from '../components/ui/Terminal';
 import { challenges, categories } from '../data/challenges';
@@ -79,6 +80,7 @@ export default function Dashboard() {
   const userType = user?.userType || 'student';
   const focusAreas = user?.onboarding?.focusAreas || [];
   const isStudent = userType === 'student';
+  const greeting = useGreeting(user?.username);
 
   useEffect(() => {
     let unsolved;
@@ -150,7 +152,7 @@ export default function Dashboard() {
                 </span>
               </div>
               <h1 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 800, margin: 0 }}>
-                Welcome back, <span style={{ color: 'var(--accent-green)' }}>{user.username}</span>.
+                {greeting}, <span style={{ color: 'var(--accent-green)' }}>{user.username}</span>.
               </h1>
               <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0', fontSize: '0.95rem', maxWidth: 520 }}>
                 {isStudent

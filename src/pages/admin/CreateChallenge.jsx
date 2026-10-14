@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, Trash2, Upload, CheckCircle, Globe, Server, File, Clock } from 'lucide-react';
+import { Plus, Trash2, Upload, CheckCircle, Globe, Server, File, Clock, AlertTriangle } from 'lucide-react';
+import { toast } from 'react-toastify';
 import { challengeService } from '../../services/challengeService';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
-const CATEGORIES = ['Web Exploitation','Cryptography','Reverse Engineering','Digital Forensics','OSINT','Networking','Binary Exploitation','Mobile Security','Steganography','Miscellaneous'];
 const DIFFICULTIES = ['Easy','Medium','Hard','Insane'];
 const POINT_PRESETS = [50,75,100,125,150,200,250,300,350,400,450,500,750];
 
 const EMPTY = {
-  title: '', category: 'Web Exploitation', difficulty: 'Easy', points: 100,
-  description: '', scenario: '', objectives: [''], instructions: '',
-  author: '', tags: '',
+  title: '', category: '', difficulty: 'Easy', points: 100,
+  description: '', scenario: '', objectives: [''],
+  instructions: '', author: '', tags: '',
   flag: '', flag_note: '',
   hints: [{ text: '', cost: 20 }],
   files: [],
@@ -45,12 +45,24 @@ export default function CreateChallenge() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('basic');
   const [mockFiles, setMockFiles] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const cats = await challengeService.getCategories();
+        setCategories(cats || []);
+      } catch {
+        setCategories([]);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (!isEdit) return;
     (async () => {
       try {
-        const c = await challengeService.getChallengeById(id);
+        const c = await challengeService.getChallengeByIdAdmin(id);
         setForm({
           ...EMPTY, ...c,
           tags: c.tags?.join(', ') || '',
@@ -61,7 +73,10 @@ export default function CreateChallenge() {
           targetPort: c.connectionInfo?.port || '',
           targetType: 'Web Application',
         });
-      } catch { navigate('/admin/challenges'); }
+      } catch (e) {
+        toast.error(e.message || 'Failed to load challenge.');
+        navigate('/admin/challenges');
+      }
       setLoading(false);
     })();
   }, [id]);
@@ -94,19 +109,32 @@ export default function CreateChallenge() {
   const save = async (status) => {
     setError('');
     if (!form.title.trim()) { setError('Challenge title is required.'); setActiveTab('basic'); return; }
-    if (!form.flag.trim()) { setError('Flag is required.'); setActiveTab('flag'); return; }
-    if (!form.flag.startsWith('CTF{')) { setError('Flag must start with CTF{'); setActiveTab('flag'); return; }
+    if (!form.flag.trim() && !isEdit) { setError('Flag is required.'); setActiveTab('flag'); return; }
+    if (!form.flag.startsWith('CTF{') && !isEdit) { setError('Flag must start with CTF{'); setActiveTab('flag'); return; }
     setSaving(true);
     try {
       const payload = { ...buildPayload(), status };
+      let result;
       if (isEdit) {
-        await challengeService.updateChallenge(id, payload);
+        result = await challengeService.updateChallenge(id, payload);
       } else {
-        await challengeService.createChallenge(payload);
+        result = await challengeService.createChallenge(payload);
+      }
+      // Upload any pending files
+      if (mockFiles.length > 0 && result?.id) {
+        for (const f of mockFiles) {
+          try {
+            await challengeService.uploadAttachment(result.id, f, f.name);
+          } catch {
+            // File upload failure is non-fatal; the challenge is still created
+          }
+        }
       }
       setSaved(true);
       setTimeout(() => navigate('/admin/challenges'), 1200);
-    } catch (e) { setError(e.message); }
+    } catch (e) {
+      setError(e.message || 'Failed to save challenge.');
+    }
     setSaving(false);
   };
 
@@ -135,8 +163,13 @@ export default function CreateChallenge() {
       </div>
 
       {error && (
-        <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: 'var(--accent-red)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontFamily: 'var(--font-mono)', fontSize: '0.85rem', animation: 'fadeInUp 0.2s ease' }}>
-          {error}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+          color: 'var(--accent-red)', borderRadius: 8, padding: '12px 16px', marginBottom: 20,
+          fontFamily: 'var(--font-mono)', fontSize: '0.85rem', animation: 'fadeInUp 0.2s ease',
+        }}>
+          <AlertTriangle size={16} /> {error}
         </div>
       )}
 
@@ -170,7 +203,8 @@ export default function CreateChallenge() {
                 <div className="col-md-4">
                   <Field label="Category" required>
                     <select className="form-select" value={form.category} onChange={e => set('category', e.target.value)}>
-                      {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                      <option value="">Select category...</option>
+                      {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                     </select>
                   </Field>
                 </div>
@@ -244,7 +278,7 @@ export default function CreateChallenge() {
           {activeTab === 'flag' && (
             <div className="animate-fade-in">
               <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '20px', marginBottom: 24 }}>
-                <Field label="Flag" required hint="Must follow the format CTF{...}">
+                <Field label="Flag" required={!isEdit} hint={isEdit ? 'Leave blank to keep the current flag.' : 'Must follow the format CTF{...}'}>
                   <div style={{ display: 'flex' }}>
                     <span style={{ display: 'flex', alignItems: 'center', padding: '0 14px', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRight: 'none', borderRadius: '8px 0 0 8px', fontFamily: 'var(--font-mono)', fontSize: '0.875rem', color: 'var(--accent-green)', whiteSpace: 'nowrap' }}>
                       CTF{'{'}
@@ -317,7 +351,7 @@ export default function CreateChallenge() {
                 <Upload size={32} color="var(--text-muted)" style={{ marginBottom: 12 }} />
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>Drop files here or click to upload</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Supported: ZIP, TXT, PDF, PNG, JPG, PCAP, PY, C, EXE, APK
+                  Files are uploaded after the challenge is saved.
                 </div>
               </div>
 
@@ -452,13 +486,6 @@ export default function CreateChallenge() {
             title={form.publishAt ? `Auto-publish at ${form.publishAt.replace('T', ' ')}` : 'Set a publish date first'}
           >
             <Clock size={15} /> {isEdit ? 'Update Schedule' : 'Save & Schedule'}
-          </button>
-          <button
-            className="btn btn-outline-primary d-flex align-items-center gap-2"
-            onClick={() => { const payload = buildPayload(); console.log('Preview payload:', payload); alert(`Preview: ${form.title || 'Untitled'}\nCategory: ${form.category}\nPoints: ${form.points}`); }}
-            disabled={saving}
-          >
-            Preview
           </button>
           <button className="btn btn-primary d-flex align-items-center gap-2" onClick={() => save('published')} disabled={saving}>
             {saving ? (

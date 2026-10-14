@@ -3,14 +3,10 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import MedalIcon from '../components/ui/MedalIcon';
 import LeaderboardGraph from '../components/ui/LeaderboardGraph';
 import { leaderboardService } from '../services/leaderboardService';
+import { challengeService } from '../services/challengeService';
+import { useApp } from '../context/AppContext';
 
-const TABS = ['Global', 'Weekly', 'Country/Region', 'Category']; 
-const TAB_LOADERS = {
-  'Global': 'getGlobalLeaderboard',
-  'Weekly': 'getWeeklyLeaderboard',
-  'Country/Region': 'getCountryLeaderboard',
-  'Category': 'getCategoryLeaderboard',
-};
+const TABS = ['Global', 'Weekly', 'Category'];
 
 function Podium({ users }) {
   const [first, second, third] = users;
@@ -100,41 +96,103 @@ function YourRankCard({ user }) {
 }
 
 export default function Leaderboard() {
+  const { user, isAuthenticated } = useApp();
   const [tab, setTab] = useState('Global');
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [myRank, setMyRank] = useState(null);
 
+  // Category options come from the real category list.
   useEffect(() => {
+    if (tab !== 'Category') return undefined;
+    let cancelled = false;
     (async () => {
-      setLoading(true);
-      setFilter('All');
-      setSearch('');
       try {
-        const loader = leaderboardService[TAB_LOADERS[tab]];
-        const list = loader ? await loader() : [];
-        setData(list);
-      } catch { setData([]); }
-      setLoading(false);
+        const list = await challengeService.getCategories();
+        if (!cancelled) setCategories(Array.isArray(list) ? list : []);
+      } catch {
+        if (!cancelled) setCategories([]);
+      }
     })();
+    return () => { cancelled = true; };
   }, [tab]);
 
-  const isFilterable = tab === 'Country/Region' || tab === 'Category';
+  // Load the active board. The server does all ranking/scoping; only the
+  // current page is filtered client-side, by username.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const opts = { limit: 50 };
+        let list;
+        if (tab === 'Weekly') {
+          list = await leaderboardService.getWeeklyLeaderboard(opts);
+        } else if (tab === 'Category') {
+          list = await leaderboardService.getCategoryLeaderboard({ ...opts, category: filter });
+        } else {
+          list = await leaderboardService.getGlobalLeaderboard(opts);
+        }
+        if (!cancelled) setData(Array.isArray(list) ? list : []);
+      } catch {
+        if (!cancelled) setData([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tab, filter]);
+
+  // The signed-in user's own rank, shown even when they are off this page.
+  useEffect(() => {
+    if (!isAuthenticated) { setMyRank(null); return undefined; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const rank = await leaderboardService.getMyRank({
+          period: tab === 'Weekly' ? 'week' : 'all',
+          category: tab === 'Category' ? filter : undefined,
+        });
+        if (!cancelled) setMyRank(rank);
+      } catch {
+        if (!cancelled) setMyRank(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthenticated, tab, filter, user?.id]);
+
+  const selectTab = (next) => {
+    setTab(next);
+    setFilter('All');
+    setSearch('');
+  };
+
+  const isFilterable = tab === 'Category';
   const filterOptions = isFilterable
-    ? [...new Set(data.map(u => u.meta).filter(Boolean))]
+    ? categories.map(c => ({ value: String(c.id), label: c.name }))
     : [];
 
-  const visibleData = data.filter(u => {
-    const matchFilter = !isFilterable || filter === 'All' || u.meta === filter;
-    const q = search.trim().toLowerCase();
-    const matchSearch = !q || u.username.toLowerCase().includes(q);
-    return matchFilter && matchSearch;
-  });
+  const visibleData = data
+    .map(u => ({ ...u, isCurrentUser: !!user && u.id === user.id }))
+    .filter(u => {
+      const q = search.trim().toLowerCase();
+      return !q || u.username.toLowerCase().includes(q);
+    });
 
   const top3 = visibleData.slice(0, 3);
   const top10 = visibleData.slice(0, 10);
-  const currentUser = visibleData.find(u => u.isCurrentUser) || null;
+  const meCard = isAuthenticated && myRank && myRank.rank != null
+    ? {
+        rank: myRank.rank,
+        username: myRank.username,
+        points: myRank.points ?? 0,
+        solved: myRank.solved ?? 0,
+        accuracy: myRank.accuracy ?? 0,
+      }
+    : null;
 
   return (
     <div className="page-container">
@@ -156,7 +214,7 @@ export default function Leaderboard() {
         width: 'fit-content',
       }}>
         {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
+          <button key={t} onClick={() => selectTab(t)} style={{
             background: tab === t ? 'var(--bg-elevated)' : 'none',
             border: tab === t ? '1px solid var(--border-bright)' : '1px solid transparent',
             color: tab === t ? 'var(--accent-green)' : 'var(--text-muted)',
@@ -182,7 +240,7 @@ export default function Leaderboard() {
             <input
               type="text"
               className="form-control"
-              placeholder={`Search ${tab === 'Country/Region' ? 'players' : 'experts'}...`}
+              placeholder="Search players..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{ paddingLeft: 36, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}
@@ -194,9 +252,9 @@ export default function Leaderboard() {
             onChange={e => setFilter(e.target.value)}
             style={{ width: 'auto', minWidth: 200, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}
           >
-            <option value="All">All {tab === 'Country/Region' ? 'Regions' : 'Categories'}</option>
+            <option value="All">All Categories</option>
             {filterOptions.map(o => (
-              <option key={o} value={o}>{o}</option>
+              <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
         </div>
@@ -220,7 +278,7 @@ export default function Leaderboard() {
           )}
 
           {/* Current user rank */}
-          {currentUser && <YourRankCard user={currentUser} />}
+          {meCard && <YourRankCard user={meCard} />}
 
           {/* Table */}
           <div className="table-scroll" style={{

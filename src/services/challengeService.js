@@ -1,193 +1,99 @@
 /**
  * challengeService.js
  * Handles all challenge-related operations.
- * Currently uses mock data from src/data/challenges.js.
- * Replace individual methods with real API calls when backend is ready.
+ *
+ * Public methods call the real Django REST API at /api/v1/.
+ * Admin methods call /api/v1/admin/challenges/ and require a JWT with
+ * the appropriate Django model permissions.
+ *
+ * Flag submission and hint reveal call the real Django REST API. Instance
+ * management remains mock — that is a separate backend stage.
  */
 
-import { challenges as mockChallenges, categories as mockCategories } from '../data/challenges';
+import { api } from './api';
 
-const CHALLENGES_KEY = 'cyberforge_challenges';
-const SOLVED_KEY = 'cyberforge_solved';
-const INSTANCES_KEY = 'cyberforge_instances';
-
-const delay = (ms = 500) => new Promise(res => setTimeout(res, ms));
-
-// Get challenges from localStorage (admin edits) or fall back to mock data
-const getStoredChallenges = () => {
-  const raw = localStorage.getItem(CHALLENGES_KEY);
-  if (raw) {
-    try { return JSON.parse(raw); } catch { /* fall through */ }
-  }
-  return mockChallenges;
-};
-
-const saveStoredChallenges = (challenges) => {
-  localStorage.setItem(CHALLENGES_KEY, JSON.stringify(challenges));
-};
-
-const getSolvedIds = () => {
-  const raw = localStorage.getItem(SOLVED_KEY);
-  if (raw) {
-    try { return JSON.parse(raw); } catch { /* fall through */ }
-  }
-  // Pre-seed solved challenges for the mock user
-  return [1, 3, 5, 7, 9, 11, 12, 13, 15, 16];
-};
-
-const saveSolvedIds = (ids) => {
-  localStorage.setItem(SOLVED_KEY, JSON.stringify(ids));
-};
-
-const getStoredInstances = () => {
-  const raw = localStorage.getItem(INSTANCES_KEY);
-  if (raw) {
-    try { return JSON.parse(raw); } catch { /* fall through */ }
-  }
-  return {};
-};
-
-const saveStoredInstances = (instances) => {
-  localStorage.setItem(INSTANCES_KEY, JSON.stringify(instances));
-};
+// ─── Public API ──────────────────────────────────────────────────────────────
 
 export const challengeService = {
   /**
-   * Get all published challenges.
-   * TODO: Replace with GET /api/challenges
+   * Get all published challenges, optionally filtered.
+   * GET /api/v1/challenges/?category=...&difficulty=...&search=...
    */
   async getChallenges(filters = {}) {
-    await delay();
-    let list = getStoredChallenges().filter(c => c.status === 'published');
-    const solved = getSolvedIds();
-
-    list = list.map(c => ({
-      ...c,
-      solved: c.trial ? false : solved.includes(c.id),
-    }));
-
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
-      list = list.filter(c =>
-        c.title.toLowerCase().includes(q) ||
-        c.description.toLowerCase().includes(q) ||
-        c.category.toLowerCase().includes(q) ||
-        c.tags.some(t => t.toLowerCase().includes(q))
-      );
-    }
+    const params = new URLSearchParams();
     if (filters.category && filters.category !== 'All') {
-      list = list.filter(c => c.category === filters.category);
+      params.set('category', filters.category);
     }
     if (filters.difficulty && filters.difficulty !== 'All') {
-      list = list.filter(c => c.difficulty === filters.difficulty);
+      params.set('difficulty', filters.difficulty);
     }
-    if (filters.status === 'solved') {
-      list = list.filter(c => c.solved);
-    } else if (filters.status === 'unsolved') {
-      list = list.filter(c => !c.solved);
+    if (filters.search) {
+      params.set('search', filters.search);
     }
-    if (filters.sort) {
-      switch (filters.sort) {
-        case 'points_asc': list.sort((a, b) => a.points - b.points); break;
-        case 'points_desc': list.sort((a, b) => b.points - a.points); break;
-        case 'solves_desc': list.sort((a, b) => b.solves - a.solves); break;
-        case 'solves_asc': list.sort((a, b) => a.solves - b.solves); break;
-        case 'newest': list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
-        default: break;
-      }
-    }
-    return list;
+    const qs = params.toString();
+    return api.get(`/challenges/${qs ? `?${qs}` : ''}`, { auth: false });
   },
 
   /**
-   * Get a single challenge by ID.
-   * TODO: Replace with GET /api/challenges/:id
+   * Get a single published challenge by ID.
+   * GET /api/v1/challenges/:id/
    */
   async getChallengeById(id) {
-    await delay(300);
-    const solved = getSolvedIds();
-    const challenge = getStoredChallenges().find(c => c.id === Number(id));
-    if (!challenge) throw new Error('Challenge not found.');
-    return { ...challenge, solved: challenge.trial ? false : solved.includes(challenge.id) };
+    return api.get(`/challenges/${id}/`, { auth: false });
   },
 
   /**
-   * Get all categories.
-   * TODO: Replace with GET /api/categories
+   * Get all categories with published challenge counts.
+   * GET /api/v1/categories/
    */
   async getCategories() {
-    await delay(200);
-    return mockCategories;
+    return api.get('/categories/', { auth: false });
   },
+
+  // ─── Flag Submission ─────────────────────────────────────────────────────
 
   /**
    * Submit a flag for a challenge.
-   * TODO: Replace with POST /api/challenges/:id/submit
+   * POST /api/v1/challenges/:id/submit/
+   *
+   * Requires an authenticated session (Bearer token attached by api.js).
+   * Resolves with the server's verdict:
+   *   { correct, alreadySolved, points, message }
+   * Throws an ApiError for validation (400), auth (401), missing/unpublished
+   * (404) and throttling (429) responses.
    */
   async submitFlag(challengeId, flag) {
-    await delay(800);
-    const challenges = getStoredChallenges();
-    const challenge = challenges.find(c => c.id === Number(challengeId));
-    if (!challenge) throw new Error('Challenge not found.');
-
-    const solved = getSolvedIds();
-    if (!challenge.trial && solved.includes(challenge.id)) {
-      return { correct: true, alreadySolved: true, points: 0, message: 'Already solved!' };
-    }
-
-    const correct = flag.trim() === challenge.flag;
-    if (correct) {
-      // Trial challenges never stay solved — they can be submitted any number of times.
-      if (challenge.trial) {
-        return { correct: true, alreadySolved: false, points: 0, trial: true, message: 'Correct flag!' };
-      }
-      solved.push(challenge.id);
-      saveSolvedIds(solved);
-      return { correct: true, alreadySolved: false, points: challenge.points, message: 'Correct flag!' };
-    }
-    return { correct: false, message: 'Incorrect flag. Keep investigating.' };
+    return api.post(`/challenges/${challengeId}/submit/`, { flag });
   },
+
+  // ─── Hints ───────────────────────────────────────────────────────────────
 
   /**
-   * Reveal a hint for a challenge (costs points).
-   * TODO: Replace with POST /api/challenges/:id/hints/:hintId/reveal
+   * Reveal a hint for a challenge. Costs the hint's points, once.
+   * POST /api/v1/challenges/:id/hints/:hintId/reveal/
+   *
+   * Requires an authenticated session (Bearer token attached by api.js; the
+   * body is empty because the server is authoritative about the cost and the
+   * acting user). Resolves with:
+   *   { revealed, alreadyUnlocked, hint: { id, order, cost, text },
+   *     pointsSpent, remainingPoints, message }
+   * Throws an ApiError for insufficient points (400), auth (401),
+   * a missing/hidden/foreign hint (404) and throttling (429).
    */
   async revealHint(challengeId, hintId) {
-    await delay(400);
-    const challenge = getStoredChallenges().find(c => c.id === Number(challengeId));
-    if (!challenge) throw new Error('Challenge not found.');
-    const hint = challenge.hints.find(h => h.id === Number(hintId));
-    if (!hint) throw new Error('Hint not found.');
-    return { hint, pointCost: hint.cost };
+    return api.post(`/challenges/${challengeId}/hints/${hintId}/reveal/`, {});
   },
 
-  // ─── Challenge Instances ───────────────────────────────────────────────────
+  // ─── Challenge Instances (mock — Docker stage) ────────────────────────────
 
   /**
    * Start a fresh instance for a challenge.
-   * TODO: Replace with POST /api/challenges/:id/instances (returns live container info)
+   * TODO: Replace with POST /api/challenges/:id/instances
    */
   async startInstance(challengeId) {
-    await delay(1200);
-    const challenge = getStoredChallenges().find(c => c.id === Number(challengeId));
-    if (!challenge) throw new Error('Challenge not found.');
-
-    const proto = challenge.connectionInfo?.url?.startsWith('https') ? 'https' : 'http';
-    const isNetcat = /^nc\s/.test(challenge.connectionInfo?.url || '');
-    const host = (challenge.connectionInfo?.url || 'http://instance.ctf.local')
-      .replace(/^https?:\/\//, '')
-      .replace(/^nc\s+/, '')
-      .split(':')[0];
-    const port = (challenge.connectionInfo?.port || 2000) + Math.floor(Math.random() * 900);
-    const id = `inst-${challengeId}-${Date.now().toString(36)}`;
-    const expiresAt = Date.now() + 30 * 60 * 1000;
-    const url = `${proto}://${host}:${port}`;
-    const command = isNetcat ? `nc ${host} ${port}` : url;
-
-    const instances = getStoredInstances();
-    instances[challengeId] = { id, host, port, expiresAt, protocol: proto, url, command };
-    saveStoredInstances(instances);
-    return instances[challengeId];
+    const delay = (ms = 1200) => new Promise(res => setTimeout(res, ms));
+    await delay();
+    return null;
   },
 
   /**
@@ -195,164 +101,94 @@ export const challengeService = {
    * TODO: Replace with DELETE /api/challenges/:id/instances/active
    */
   async stopInstance(challengeId) {
-    await delay(400);
-    const instances = getStoredInstances();
-    delete instances[challengeId];
-    saveStoredInstances(instances);
+    const delay = (ms = 400) => new Promise(res => setTimeout(res, ms));
+    await delay();
     return { success: true };
   },
 
   /**
-   * Get the currently active instance for a challenge (if any), expiring stale ones.
+   * Get the currently active instance for a challenge (if any).
    * TODO: Replace with GET /api/challenges/:id/instances/active
    */
   async getInstance(challengeId) {
-    await delay(200);
-    const instances = getStoredInstances();
-    const instance = instances[challengeId];
-    if (instance && instance.expiresAt <= Date.now()) {
-      delete instances[challengeId];
-      saveStoredInstances(instances);
-      return null;
-    }
-    return instance || null;
+    return null;
   },
 
-  // ─── Admin Methods ─────────────────────────────────────────────────────────
+  // ─── Admin API ────────────────────────────────────────────────────────────
 
   /**
    * Get ALL challenges (including drafts). Admin only.
-   * TODO: Replace with GET /api/admin/challenges (requires admin JWT)
+   * GET /api/v1/admin/challenges/
    */
-  async getAllChallenges() {
-    await delay(400);
-    return getStoredChallenges();
+  async getAllChallenges({ status, search } = {}) {
+    const params = new URLSearchParams();
+    if (status && status !== 'all') params.set('status', status);
+    if (search) params.set('search', search);
+    const qs = params.toString();
+    return api.get(`/admin/challenges/${qs ? `?${qs}` : ''}`);
+  },
+
+  /**
+   * Get a single challenge by ID (any status). Admin only.
+   * GET /api/v1/admin/challenges/:id/
+   */
+  async getChallengeByIdAdmin(id) {
+    return api.get(`/admin/challenges/${id}/`);
   },
 
   /**
    * Create a new challenge. Admin only.
-   * TODO: Replace with POST /api/admin/challenges
+   * POST /api/v1/admin/challenges/
    */
   async createChallenge(data) {
-    await delay(600);
-    const challenges = getStoredChallenges();
-    const newChallenge = {
-      ...data,
-      id: Date.now(),
-      solves: 0,
-      solved: false,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    challenges.push(newChallenge);
-    saveStoredChallenges(challenges);
-    return newChallenge;
+    return api.post('/admin/challenges/', data);
   },
 
   /**
    * Update an existing challenge. Admin only.
-   * TODO: Replace with PATCH /api/admin/challenges/:id
+   * PATCH /api/v1/admin/challenges/:id/
    */
   async updateChallenge(id, data) {
-    await delay(500);
-    const challenges = getStoredChallenges();
-    const index = challenges.findIndex(c => c.id === Number(id));
-    if (index === -1) throw new Error('Challenge not found.');
-    challenges[index] = { ...challenges[index], ...data };
-    saveStoredChallenges(challenges);
-    return challenges[index];
+    return api.patch(`/admin/challenges/${id}/`, data);
   },
 
   /**
-   * Delete a challenge. Admin only.
-   * TODO: Replace with DELETE /api/admin/challenges/:id
+   * Delete a challenge. Admin only. Only draft challenges can be deleted.
+   * DELETE /api/v1/admin/challenges/:id/
    */
   async deleteChallenge(id) {
-    await delay(400);
-    const challenges = getStoredChallenges();
-    const filtered = challenges.filter(c => c.id !== Number(id));
-    saveStoredChallenges(filtered);
-    return { success: true };
+    return api.delete(`/admin/challenges/${id}/`);
   },
 
   /**
-   * Toggle challenge publish status. Admin only.
-   * TODO: Replace with PATCH /api/admin/challenges/:id/status
+   * Set challenge status (publish / unpublish / schedule). Admin only.
+   * PATCH /api/v1/admin/challenges/:id/status/
    */
-  async toggleChallengeStatus(id) {
-    await delay(300);
-    const challenges = getStoredChallenges();
-    const index = challenges.findIndex(c => c.id === Number(id));
-    if (index === -1) throw new Error('Challenge not found.');
-    const newStatus = challenges[index].status === 'published' ? 'draft' : 'published';
-    challenges[index].status = newStatus;
-    saveStoredChallenges(challenges);
-    return challenges[index];
-  },
-
-  /**
-   * Set or clear a scheduled publish time for a challenge. Admin only.
-   * TODO: Replace with PATCH /api/admin/challenges/:id/schedule
-   */
-  async scheduleChallenge(id, publishAt) {
-    await delay(300);
-    const challenges = getStoredChallenges();
-    const index = challenges.findIndex(c => c.id === Number(id));
-    if (index === -1) throw new Error('Challenge not found.');
-    challenges[index].publishAt = publishAt;
-    challenges[index].status = publishAt ? 'scheduled' : 'draft';
-    saveStoredChallenges(challenges);
-    return challenges[index];
-  },
-
-  /**
-   * Auto-publish any challenges whose scheduled time has passed. Returns ids published.
-   * TODO: Replace with a server-side scheduler
-   */
-  async resolveScheduled() {
-    await delay(150);
-    const challenges = getStoredChallenges();
-    const now = Date.now();
-    let changed = false;
-    const publishedIds = [];
-    challenges.forEach(c => {
-      if (c.status === 'scheduled' && c.publishAt && new Date(c.publishAt).getTime() <= now) {
-        c.status = 'published';
-        delete c.publishAt;
-        changed = true;
-        publishedIds.push(c.id);
-      }
+  async setChallengeStatus(id, status, publishAt = '') {
+    return api.patch(`/admin/challenges/${id}/status/`, {
+      status,
+      publishAt: publishAt || '',
     });
-    if (changed) saveStoredChallenges(challenges);
-    return publishedIds;
   },
 
   /**
-   * Replace the entire challenge set with imported JSON. Admin only.
-   * TODO: Replace with POST /api/admin/challenges/import
+   * Upload an attachment to a challenge. Admin only.
+   * POST /api/v1/admin/challenges/:id/attachments/
    */
-  async importChallenges(data) {
-    await delay(600);
-    const imported = Array.isArray(data) ? data : [data];
-    const challenges = getStoredChallenges();
-    const added = [];
-    imported.forEach(item => {
-      const existing = challenges.find(c => c.id === Number(item.id));
-      if (existing) {
-        Object.assign(existing, item);
-      } else {
-        const next = {
-          ...item,
-          id: item.id || Date.now() + added.length,
-          solves: item.solves || 0,
-          solved: false,
-          status: item.status || 'draft',
-          createdAt: item.createdAt || new Date().toISOString().split('T')[0],
-        };
-        challenges.push(next);
-        added.push(next);
-      }
-    });
-    saveStoredChallenges(challenges);
-    return { imported: imported.length, added: added.length };
+  async uploadAttachment(id, file, name = '') {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (name) formData.append('name', name);
+    return api.post(`/admin/challenges/${id}/attachments/`, formData);
+  },
+
+  /**
+   * Delete an attachment from a challenge. Admin only.
+   * DELETE /api/v1/admin/challenges/:id/attachments/:attachmentId/
+   */
+  async deleteAttachment(id, attachmentId) {
+    return api.delete(`/admin/challenges/${id}/attachments/${attachmentId}/`);
   },
 };
+
+export default challengeService;

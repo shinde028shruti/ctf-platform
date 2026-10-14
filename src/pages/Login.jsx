@@ -31,20 +31,22 @@ export default function Login() {
 
   const handleGoogle = async () => {
     setLoading(true);
+    setError('');
     try {
       await googleLogin();
       navigate('/dashboard');
-    } catch (err) { setError(err.message); }
+    } catch (err) { setError(err?.message || 'Google sign-in is unavailable.'); }
     setLoading(false);
   };
 
   const demoLogin = async (role = 'user') => {
     setLoading(true);
+    setError('');
     try {
       const creds = role === 'admin' ? ['admin', 'admin123'] : ['h4ck3r_x', 'password123'];
       const u = await login(...creds);
       navigate(u.role === 'admin' ? '/admin' : '/dashboard');
-    } catch (err) { setError(err.message); }
+    } catch (err) { setError(err?.message || 'Demo login failed.'); }
     setLoading(false);
   };
 
@@ -104,6 +106,7 @@ export default function Login() {
               <input
                 className="form-control"
                 placeholder="you@example.com"
+                name="username"
                 value={form.identifier}
                 onChange={e => set('identifier', e.target.value)}
                 autoComplete="username"

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Flag, GraduationCap, Swords } from 'lucide-react';
+import { Flag, GraduationCap, Swords, AlertTriangle } from 'lucide-react';
 import ChallengeCard from '../components/ui/ChallengeCard';
 import ChallengeFilter from '../components/ui/ChallengeFilter';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -14,6 +14,7 @@ export default function Challenges() {
   const [allChallenges, setAllChallenges] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     search: '',
     category: urlCategory || 'All',
@@ -29,32 +30,58 @@ export default function Challenges() {
     if (urlCategory) setFilters(f => ({ ...f, category: urlCategory }));
   }, [urlCategory]);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const list = await challengeService.getChallenges();
-      setAllChallenges(list);
-      setFiltered(list);
-      setLoading(false);
-    })();
-  }, []);
-
-  useEffect(() => {
-    (async () => {
+  const loadChallenges = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
       const list = await challengeService.getChallenges(filters);
+      setAllChallenges(list || []);
+      setFiltered(list || []);
+    } catch (e) {
+      setError(e.message || 'Failed to load challenges.');
+      setAllChallenges([]);
+      setFiltered([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
 
-      let final = list;
-      if (userType === 'student' && !filters.search && filters.difficulty === 'All' && filters.category === 'All') {
-        const interestMatches = focusAreas.length
-          ? list.filter(c => focusAreas.includes(c.category) && !c.solved).concat(list.filter(c => !focusAreas.includes(c.category) && !c.solved))
-          : list.filter(c => !c.solved);
-        const diffOrder = { Easy: 0, Medium: 1, Hard: 2, Insane: 3 };
-        final = interestMatches.sort((a, b) => diffOrder[a.difficulty] - diffOrder[b.difficulty] || b.points - a.points);
+  useEffect(() => { loadChallenges(); }, [loadChallenges]);
+
+  // Apply client-side transformations (student mode, solved filter, sorting)
+  useEffect(() => {
+    let list = [...allChallenges];
+
+    // Solved filter
+    if (filters.status === 'solved') {
+      list = list.filter(c => c.solved);
+    } else if (filters.status === 'unsolved') {
+      list = list.filter(c => !c.solved);
+    }
+
+    // Sorting
+    if (filters.sort && filters.sort !== 'default') {
+      switch (filters.sort) {
+        case 'points_asc': list.sort((a, b) => a.points - b.points); break;
+        case 'points_desc': list.sort((a, b) => b.points - a.points); break;
+        case 'solves_desc': list.sort((a, b) => b.solves - a.solves); break;
+        case 'solves_asc': list.sort((a, b) => a.solves - b.solves); break;
+        case 'newest': list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
+        default: break;
       }
+    }
 
-      setFiltered(final);
-    })();
-  }, [filters, userType, focusAreas]);
+    // Student mode: curated ordering
+    if (userType === 'student' && !filters.search && filters.difficulty === 'All' && filters.category === 'All') {
+      const diffOrder = { Easy: 0, Medium: 1, Hard: 2, Insane: 3 };
+      const interestMatches = focusAreas.length
+        ? list.filter(c => focusAreas.includes(c.category) && !c.solved).concat(list.filter(c => !focusAreas.includes(c.category) && !c.solved))
+        : list.filter(c => !c.solved);
+      list = interestMatches.sort((a, b) => diffOrder[a.difficulty] - diffOrder[b.difficulty] || b.points - a.points);
+    }
+
+    setFiltered(list);
+  }, [allChallenges, filters, userType, focusAreas]);
 
   const diffOrder = { Easy: 0, Medium: 1, Hard: 2, Insane: 3 };
   const grouped = ['Easy', 'Medium', 'Hard', 'Insane'].reduce((acc, d) => {
@@ -67,6 +94,10 @@ export default function Challenges() {
   const switchMode = (mode) => {
     updateUser({ userType: mode });
   };
+
+  if (loading && allChallenges.length === 0) {
+    return <LoadingSpinner fullPage text="Loading challenges..." />;
+  }
 
   return (
     <div className="page-container">
@@ -141,6 +172,19 @@ export default function Challenges() {
         </div>
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.28)',
+          borderRadius: 10, padding: '12px 16px', marginBottom: 20,
+          color: 'var(--accent-red)', fontSize: '0.85rem',
+        }}>
+          <AlertTriangle size={16} /> {error}
+          <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={loadChallenges}>Retry</button>
+        </div>
+      )}
+
       {/* Filter */}
       <ChallengeFilter filters={filters} onChange={setFilters} total={filtered.length} />
 
@@ -151,7 +195,7 @@ export default function Challenges() {
         <div className="no-results">
           <div className="no-results-icon"><Flag /></div>
           <div style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 8 }}>No challenges found</div>
-          <div style={{ fontSize: '0.85rem' }}>Try adjusting your filters.</div>
+          <div style={{ fontSize: '0.85rem' }}>{error ? 'A server error occurred.' : 'Try adjusting your filters.'}</div>
         </div>
       ) : hasGroups ? (
         // Grouped by difficulty

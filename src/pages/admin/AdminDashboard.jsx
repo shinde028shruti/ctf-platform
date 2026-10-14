@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { challengeService } from '../../services/challengeService';
 import { adminService } from '../../services/adminService';
 import { useApp } from '../../context/AppContext';
+import useGreeting from '../../hooks/useGreeting';
 import StatCard from '../../components/ui/StatCard';
 import { downloadCsv } from '../../utils/exportUtils';
 
@@ -69,6 +70,7 @@ function AuditPreview() {
 
 export default function AdminDashboard() {
   const { user } = useApp();
+  const greeting = useGreeting(user?.username);
   const [challenges, setChallenges] = useState([]);
   const [solves, setSolves] = useState([]);
   const [adminUsers, setAdminUsers] = useState([]);
@@ -134,7 +136,7 @@ export default function AdminDashboard() {
                 Admin Session Active
               </div>
               <h1 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 800, margin: 0 }}>
-                Welcome back, <span style={{ color: 'var(--accent-green)' }}>{user.username}</span>.
+                {greeting}, <span style={{ color: 'var(--accent-green)' }}>{user.username}</span>.
               </h1>
               <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0', fontSize: '0.95rem', maxWidth: 520 }}>
                 Administer the platform. Publish challenges, review submissions, and keep the field running.

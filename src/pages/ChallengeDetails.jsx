@@ -4,7 +4,7 @@ import {
   ArrowLeft, Flag, Users, CheckCircle, XCircle, Download,
   ExternalLink, Copy, ChevronRight, Tag, Clock, User, Globe,
   File, FileText, FileCode, FileImage, FileTerminal, Package, Smartphone, Activity,
-  Power, Server, Loader, Square
+  Power, Server, Loader, Square, AlertTriangle
 } from 'lucide-react';
 import HintCard from '../components/ui/HintCard';
 import CheatsheetTab from '../components/ui/CheatsheetTab';
@@ -26,6 +26,7 @@ export default function ChallengeDetails() {
 
   const [challenge, setChallenge] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [flag, setFlag] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
@@ -64,32 +65,49 @@ export default function ChallengeDetails() {
     return () => clearInterval(timer);
   }, [instance]);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const c = await challengeService.getChallengeById(id);
-        setChallenge(c);
-      } catch { navigate('/challenges'); }
+  const loadChallenge = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const c = await challengeService.getChallengeById(id);
+      setChallenge(c);
+    } catch (e) {
+      setError(e.message || 'Challenge not found.');
+    } finally {
       setLoading(false);
-    })();
-  }, [id]);
+    }
+  };
+
+  useEffect(() => { loadChallenge(); }, [id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!flag.trim()) return;
+    const submitted = flag.trim();
+    if (!submitted || submitting) return;
     setSubmitting(true);
     setResult(null);
     try {
-      const res = await challengeService.submitFlag(id, flag.trim());
+      const res = await challengeService.submitFlag(id, submitted);
       setResult(res);
-      if (res.correct && !res.alreadySolved) {
-        addPoints(res.points);
+      if (res.correct) {
         setChallenge(prev => ({ ...prev, solved: true }));
-        setShowComplete(true);
+        if (!res.alreadySolved) {
+          addPoints(res.points);
+          setShowComplete(true);
+        }
       }
-    } catch { /* silent */ }
-    setSubmitting(false);
+    } catch (err) {
+      // 400 validation, 401 session, 404 hidden/removed, 429 throttled, or a
+      // network failure. `api.js` has already turned the body into a readable
+      // message, so surface it verbatim.
+      setResult({
+        correct: false,
+        error: true,
+        message: err?.message || 'Could not submit your flag. Please try again.',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const copyUrl = () => {
@@ -98,6 +116,23 @@ export default function ChallengeDetails() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  // Called by HintCard after the server confirms (and charges for) an unlock.
+  // Marks the hint revealed in page state so its text survives a re-render;
+  // the server payload is authoritative for both the text and the balance.
+  const handleHintUnlocked = (hintId, res) => {
+    setChallenge(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        hints: (prev.hints || []).map(h =>
+          h.id === hintId
+            ? { ...h, revealed: true, text: res.hint?.text ?? h.text }
+            : h
+        ),
+      };
+    });
   };
 
   const handleStartInstance = async () => {
@@ -130,6 +165,29 @@ export default function ChallengeDetails() {
   const fmtTime = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   if (loading) return <LoadingSpinner fullPage text="Loading challenge..." />;
+
+  if (error && !challenge) {
+    return (
+      <div className="page-container">
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.28)',
+          borderRadius: 10, padding: '16px 20px', marginBottom: 20,
+          color: 'var(--accent-red)', fontSize: '0.9rem',
+        }}>
+          <AlertTriangle size={18} /> {error}
+        </div>
+        <button
+          onClick={() => navigate('/challenges')}
+          className="d-flex align-items-center gap-2 mb-4"
+          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.875rem', padding: 0 }}
+        >
+          <ArrowLeft size={16} /> Back to Challenges
+        </button>
+      </div>
+    );
+  }
+
   if (!challenge) return null;
 
   const tabs = [
@@ -192,7 +250,7 @@ export default function ChallengeDetails() {
                   <Users size={16} color="var(--accent-cyan)" />
                 </div>
                 <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-cyan)', lineHeight: 1 }}>{challenge.solves.toLocaleString()}</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-cyan)', lineHeight: 1 }}>{challenge.solves?.toLocaleString()}</div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>solves</div>
                 </div>
               </div>
@@ -291,7 +349,7 @@ export default function ChallengeDetails() {
                     </div>
                   ) : (
                     challenge.hints.map((h, i) => (
-                      <HintCard key={h.id} hint={h} challengeId={challenge.id} index={i} />
+                      <HintCard key={h.id} hint={h} challengeId={challenge.id} index={i} onUnlocked={handleHintUnlocked} />
                     ))
                   )}
                 </div>
@@ -308,12 +366,15 @@ export default function ChallengeDetails() {
                           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>{f.name}</div>
                           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{f.size}</div>
                         </div>
-                        <button
+                        <a
+                          href={f.url}
+                          download={f.name}
+                          target="_blank"
+                          rel="noreferrer"
                           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                          onClick={() => alert(`In a real platform, "${f.name}" would download from the server.`)}
                         >
                           <Download size={13} /> Download
-                        </button>
+                        </a>
                       </div>
                     ))}
                   </div>
@@ -459,13 +520,36 @@ export default function ChallengeDetails() {
 
                   {result && (
                     <div className={`flag-submit-result ${result.correct ? 'success' : 'error'} mb-3`}>
-                      {result.correct ? (
+                      {result.error ? (
+                        <div>
+                          <div className="d-flex align-items-center gap-2 mb-1">
+                            <XCircle size={16} />
+                            <span style={{ fontWeight: 700 }}>Submission Failed</span>
+                          </div>
+                          <div style={{ fontSize: '0.8rem', opacity: 0.85 }}>{result.message}</div>
+                        </div>
+                      ) : result.correct && result.alreadySolved ? (
+                        <div>
+                          <div className="d-flex align-items-center gap-2 mb-1">
+                            <CheckCircle size={16} />
+                            <span style={{ fontWeight: 700 }}>Already Solved</span>
+                          </div>
+                          <div style={{ fontSize: '0.8rem', opacity: 0.85 }}>
+                            {result.message || 'You have already captured this flag.'}
+                          </div>
+                        </div>
+                      ) : result.correct ? (
                         <div>
                           <div className="d-flex align-items-center gap-2 mb-1">
                             <CheckCircle size={16} />
                             <span style={{ fontWeight: 700 }}>Correct Flag!</span>
                           </div>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>+{result.points} Points</div>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>+{result.netPoints ?? result.points} Points</div>
+                          {result.hintCost > 0 && (
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                              {result.points} − {result.hintCost} spent on hints
+                            </div>
+                          )}
                           <div style={{ fontSize: '0.75rem', color: 'var(--accent-green)', opacity: 0.7, marginTop: 2 }}>Challenge Completed</div>
                         </div>
                       ) : (
@@ -474,7 +558,9 @@ export default function ChallengeDetails() {
                             <XCircle size={16} />
                             <span style={{ fontWeight: 700 }}>Incorrect Flag</span>
                           </div>
-                          <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>Keep investigating.</div>
+                          <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>
+                            {result.message || 'Keep investigating.'}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -505,7 +591,7 @@ export default function ChallengeDetails() {
                 { label: 'Category', value: challenge.category },
                 { label: 'Difficulty', value: challenge.difficulty },
                 { label: 'Points', value: `${challenge.points} pts` },
-                { label: 'Solves', value: challenge.solves.toLocaleString() },
+                { label: 'Solves', value: challenge.solves?.toLocaleString() },
                 { label: 'Author', value: challenge.author },
                 { label: 'Added', value: challenge.createdAt },
               ].map(({ label, value }) => (
@@ -562,11 +648,16 @@ export default function ChallengeDetails() {
               You captured <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{challenge.title}</span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '14px', marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '14px', marginBottom: result.hintCost > 0 ? 8 : 24 }}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Reward</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-green)' }}>+{result.points}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-green)' }}>+{result.netPoints ?? result.points}</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>points</span>
             </div>
+            {result.hintCost > 0 && (
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 24 }}>
+                {result.points} − {result.hintCost} spent on hints
+              </div>
+            )}
 
             <div className="d-flex flex-column gap-2">
               <button

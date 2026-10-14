@@ -1,92 +1,81 @@
 /**
  * leaderboardService.js
- * Handles leaderboard and ranking data.
- * Currently uses mock data from src/data/users.js.
- * TODO: Replace all methods with real API calls when backend is ready.
+ * Real leaderboard and ranking data from the Django REST API.
+ *
+ *   GET /api/v1/leaderboard/?period=all|week&category=<id>&page=&limit=
+ *   GET /api/v1/leaderboard/me/?period=all|week&category=<id>
+ *
+ * The board is public and read-only; the server is authoritative about points
+ * and ranks. Ranking rows expose only public profile fields
+ * (id, username, points, solved, accuracy, meta, rank).
+ *
+ * The list endpoints resolve to an array of rows for convenience; the raw
+ * paginated envelope is available via `getLeaderboardPage`.
  */
 
-import {
-  leaderboardUsers,
-  weeklyLeaderboard,
-  monthlyLeaderboard,
-  countryLeaderboard,
-  categoryLeaderboard,
-} from '../data/users';
+import { api } from './api';
 
-const delay = (ms = 500) => new Promise(res => setTimeout(res, ms));
+function boardQuery({ period, category, page, limit } = {}) {
+  const params = new URLSearchParams();
+  if (period && period !== 'all') params.set('period', period);
+  if (category && category !== 'All') params.set('category', category);
+  if (page) params.set('page', page);
+  if (limit) params.set('limit', limit);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+async function fetchBoard(params = {}) {
+  const data = await api.get(`/leaderboard/${boardQuery(params)}`, { auth: false });
+  return data.results ?? data;
+}
 
 export const leaderboardService = {
   /**
-   * Get global leaderboard.
-   * TODO: Replace with GET /api/leaderboard?type=global&page=1&limit=50
+   * All-time global leaderboard.
+   * GET /api/v1/leaderboard/?period=all
    */
-  async getGlobalLeaderboard() {
-    await delay();
-    return [...leaderboardUsers].sort((a, b) => b.points - a.points);
+  async getGlobalLeaderboard(params = {}) {
+    return fetchBoard({ ...params, period: 'all' });
   },
 
   /**
-   * Get weekly leaderboard.
-   * TODO: Replace with GET /api/leaderboard?type=weekly
+   * Trailing seven-day leaderboard.
+   * GET /api/v1/leaderboard/?period=week
    */
-  async getWeeklyLeaderboard() {
-    await delay();
-    return [...weeklyLeaderboard].sort((a, b) => b.points - a.points);
+  async getWeeklyLeaderboard(params = {}) {
+    return fetchBoard({ ...params, period: 'week' });
   },
 
   /**
-   * Get monthly leaderboard.
-   * TODO: Replace with GET /api/leaderboard?type=monthly
+   * Category-scoped leaderboard (points earned on one category's challenges).
+   * GET /api/v1/leaderboard/?category=<id|name>
    */
-  async getMonthlyLeaderboard() {
-    await delay();
-    return [...monthlyLeaderboard].sort((a, b) => b.points - a.points);
+  async getCategoryLeaderboard(params = {}) {
+    return fetchBoard({ ...params, period: 'all' });
   },
 
   /**
-   * Get country / region leaderboard.
-   * TODO: Replace with GET /api/leaderboard?type=country
+   * Raw paginated envelope: { count, next, previous, results }.
    */
-  async getCountryLeaderboard() {
-    await delay();
-    return [...countryLeaderboard].sort((a, b) => b.points - a.points);
+  async getLeaderboardPage(params = {}) {
+    return api.get(`/leaderboard/${boardQuery(params)}`, { auth: false });
   },
 
   /**
-   * Get category (specialty) leaderboard.
-   * TODO: Replace with GET /api/leaderboard?type=category
+   * The signed-in user's own standing, even when off the current page.
+   * GET /api/v1/leaderboard/me/
+   *
+   * Resolves with { id, username, points, solved, accuracy, meta, rank }
+   * (`rank` is null when the user has not solved anything in scope yet).
    */
-  async getCategoryLeaderboard() {
-    await delay();
-    return [...categoryLeaderboard].sort((a, b) => b.points - a.points);
-  },
-
-  /**
-   * Get event-specific leaderboard.
-   * TODO: Replace with GET /api/events/:eventId/leaderboard
-   */
-  async getEventLeaderboard(eventId) {
-    await delay();
-    // Mock event leaderboard — same structure as global
-    return [...leaderboardUsers]
-      .sort((a, b) => b.points - a.points)
-      .slice(0, 10)
-      .map((u, i) => ({ ...u, rank: i + 1, points: Math.floor(u.points * 0.4) }));
-  },
-
-  /**
-   * Get current user's rank and surrounding users.
-   * TODO: Replace with GET /api/leaderboard/me
-   */
-  async getUserRank(userId) {
-    await delay(300);
-    const all = [...leaderboardUsers].sort((a, b) => b.points - a.points);
-    const index = all.findIndex(u => u.id === userId);
-    if (index === -1) return null;
-    return {
-      rank: index + 1,
-      user: all[index],
-      nearby: all.slice(Math.max(0, index - 2), index + 3),
-    };
+  async getMyRank({ period, category } = {}) {
+    const params = new URLSearchParams();
+    if (period && period !== 'all') params.set('period', period);
+    if (category && category !== 'All') params.set('category', category);
+    const qs = params.toString();
+    return api.get(`/leaderboard/me/${qs ? `?${qs}` : ''}`);
   },
 };
+
+export default leaderboardService;

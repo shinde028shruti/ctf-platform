@@ -31,6 +31,12 @@ export default function Profile() {
   const userBadges = allBadges.filter(b => user.badges?.includes(b.id));
   const lockedBadges = allBadges.filter(b => !user.badges?.includes(b.id));
 
+  // The API does not expose a join date yet, so this can legitimately be
+  // missing. Guard it rather than rendering "Invalid Date".
+  const joinDateLabel = user.joinDate
+    ? new Date(user.joinDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : null;
+
   const totalChallenges = Object.values(user.categoryStats || {}).reduce((s, v) => s + v.total, 0);
   const solvedCount = user.solvedChallenges?.length || 0;
   const completionPct = totalChallenges ? Math.round((solvedCount / totalChallenges) * 100) : 0;
@@ -76,8 +82,7 @@ export default function Profile() {
                   fontFamily: 'var(--font-mono)', fontSize: '0.62rem',
                   color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase',
                 }}>
-                  <Calendar size={12} color="var(--accent-green)" />
-                  Member since {new Date(user.joinDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  {joinDateLabel && <><Calendar size={12} color="var(--accent-green)" />Member since {joinDateLabel}</>}
                 </span>
               </div>
               <div style={{

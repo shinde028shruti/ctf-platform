@@ -161,6 +161,8 @@ export default function Onboarding() {
     experienceType: null,
     userType: null,
   });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const handleToggleMulti = (field, value) => {
     setData(prev => {
@@ -189,9 +191,22 @@ export default function Onboarding() {
   const finish = async () => {
     const userType = data.purpose === 'competitive' ? 'competitor' : 'student';
     const payload = { ...data, userType };
-    const updated = await onboardingService.saveOnboarding(payload);
-    updateUser({ onboardingCompleted: true, userType, onboarding: payload });
-    navigate('/dashboard', { replace: true });
+
+    setSaving(true);
+    setError('');
+    try {
+      // Persist server-side: /me/ is the source of truth on reload, so a local
+      // only save would leave onboardingCompleted false and bounce the user
+      // straight back here on the next page load.
+      await onboardingService.saveOnboarding(payload);
+      updateUser({ onboardingCompleted: true, userType, onboarding: payload });
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      // Stay on the last step so the answers are not lost and the user can retry.
+      setError(err?.message || 'Could not save your answers. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -267,12 +282,24 @@ export default function Onboarding() {
             />
           )}
 
+          {error && (
+            <div style={{
+              marginTop: 16, background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.25)', color: 'var(--accent-red)',
+              borderRadius: 8, padding: '10px 14px', fontSize: '0.85rem',
+              fontFamily: 'var(--font-mono)',
+            }}>
+              {error}
+            </div>
+          )}
+
           {/* Navigation */}
           {step > 0 && (
             <div className="d-flex justify-content-between align-items-center mt-4 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
               <button
                 className="btn btn-outline-secondary d-flex align-items-center gap-2"
                 onClick={() => setStep(s => s - 1)}
+                disabled={saving}
                 style={{ padding: '10px 20px' }}
               >
                 <ChevronLeft size={16} /> Back
@@ -290,10 +317,11 @@ export default function Onboarding() {
                 <button
                   className="btn btn-primary d-flex align-items-center gap-2"
                   onClick={finish}
-                  disabled={!canAdvance()}
+                  disabled={!canAdvance() || saving}
                   style={{ padding: '10px 24px' }}
                 >
-                  <CheckCircle size={16} /> Complete Setup
+                  {saving ? 'Saving...' : 'Complete Setup'}
+                  {!saving && <CheckCircle size={16} />}
                 </button>
               )}
             </div>

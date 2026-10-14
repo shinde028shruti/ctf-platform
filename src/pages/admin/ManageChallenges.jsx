@@ -1,21 +1,50 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { Plus, MoreVertical, Edit, Eye, Copy, ToggleLeft, ToggleRight, Trash2, Search, CheckCircle, Clock, Upload } from 'lucide-react';
+import { Plus, MoreVertical, Edit, Eye, Copy, ToggleLeft, ToggleRight, Trash2, Search, CheckCircle, Clock, Upload, AlertTriangle, RefreshCw } from 'lucide-react';
 import { challengeService } from '../../services/challengeService';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import Modal from '../../components/ui/Modal';
 import ExportMenu from '../../components/ui/ExportMenu';
-import { downloadExcel, downloadPdf, parseExcelFile } from '../../utils/exportUtils';
+import { downloadExcel, downloadPdf } from '../../utils/exportUtils';
 
 function ActionMenu({ challenge, onAction }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [pos, setPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef(null);
+
+  const toggle = () => {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setOpen(o => !o);
+  };
 
   useEffect(() => {
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
+    if (!open) return;
+
+    const close = () => setOpen(false);
+    const onOutsideClick = (e) => {
+      if (btnRef.current && !btnRef.current.contains(e.target)) close();
+    };
+    const onScroll = () => close();
+
+    // Defer attaching the outside-click listener so it doesn't catch
+    // the same click that opened the dropdown.
+    const timer = setTimeout(() => {
+      document.addEventListener('click', onOutsideClick);
+    }, 0);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', close);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', onOutsideClick);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
 
   const items = [
     { icon: Edit,        label: 'Edit',      action: 'edit',     className: '' },
@@ -31,24 +60,25 @@ function ActionMenu({ challenge, onAction }) {
   ];
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', transition: 'all 0.15s' }}
+    <>
+      <button ref={btnRef} onClick={toggle} style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: 6, color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 8px', display: 'flex', alignItems: 'center', transition: 'all 0.15s' }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent-green)'; e.currentTarget.style.color = 'var(--accent-green)'; }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
       >
         <MoreVertical size={15} />
       </button>
-      {open && (
-        <div className="cf-dropdown" style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 100 }}>
+      {open && createPortal(
+        <div className="cf-dropdown" style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 9999 }}>
           {items.map(({ icon: Icon, label, action, className, color }) => (
             <button key={action} className={`cf-dropdown-item ${className}`}
               onClick={() => { onAction(challenge, action); setOpen(false); }}>
               <Icon size={14} color={color} /> {label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 
@@ -85,47 +115,38 @@ function scheduledValue(v) {
 export default function ManageChallenges() {
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [deleteModal, setDeleteModal] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [toast, setToast] = useState('');
   const [scheduleModal, setScheduleModal] = useState(null);
   const [scheduleAt, setScheduleAt] = useState('');
   const [scheduleBusy, setScheduleBusy] = useState(false);
-  const [importBusy, setImportBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState('');
+  const [toast, setToast] = useState(null);
   const fileRef = useRef(null);
 
-  const showToast = (msg, color = 'var(--accent-green)') => { setToast({ msg, color }); setTimeout(() => setToast(''), 3000); };
-
-  const load = async () => {
-    const list = await challengeService.getAllChallenges();
-    setChallenges(list);
-    return list;
+  const showToast = (msg, isError = false) => {
+    setToast({ msg, isError });
+    setTimeout(() => setToast(null), 3000);
   };
 
-  useEffect(() => {
-    (async () => { await load(); setLoading(false); })();
-  }, []);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const list = await challengeService.getAllChallenges({ search, status: statusFilter });
+      setChallenges(list || []);
+    } catch (e) {
+      setError(e.message || 'Failed to load challenges.');
+      setChallenges([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, statusFilter]);
 
-  // Auto-publish scheduled challenges every 30s
-  useEffect(() => {
-    (async () => {
-      const publishedIds = await challengeService.resolveScheduled();
-      if (publishedIds.length) {
-        setChallenges(await load());
-        showToast(`Auto-published ${publishedIds.length} scheduled challenge${publishedIds.length > 1 ? 's' : ''}.`);
-      }
-    })();
-    const iv = setInterval(async () => {
-      const publishedIds = await challengeService.resolveScheduled();
-      if (publishedIds.length) {
-        setChallenges(await load());
-        showToast(`Auto-published ${publishedIds.length} scheduled challenge${publishedIds.length > 1 ? 's' : ''}.`);
-      }
-    }, 30000);
-    return () => clearInterval(iv);
-  }, []);
+  useEffect(() => { load(); }, [load]);
 
   const filtered = challenges.filter(c =>
     c.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -142,20 +163,41 @@ export default function ManageChallenges() {
       return;
     }
     if (action === 'duplicate') {
-      const dup = await challengeService.createChallenge({
-        ...challenge,
-        title: `${challenge.title} (Copy)`,
-        status: 'draft',
-        solves: 0,
-      });
-      setChallenges(prev => [...prev, dup]);
-      showToast(`Duplicated "${challenge.title}"`);
+      try {
+        const dup = await challengeService.createChallenge({
+          title: `${challenge.title} (Copy)`,
+          category: challenge.category,
+          difficulty: challenge.difficulty,
+          points: challenge.points,
+          description: challenge.description,
+          scenario: challenge.scenario,
+          objectives: challenge.objectives,
+          instructions: challenge.instructions,
+          author: challenge.author,
+          tags: challenge.tags,
+          featured: false,
+          trial: false,
+          connectionInfo: challenge.connectionInfo,
+          cheatsheet: challenge.cheatsheet,
+          status: 'draft',
+          flag: 'CTF{duplicate_flag}',
+        });
+        await load();
+        showToast(`Duplicated "${challenge.title}"`);
+      } catch (e) {
+        showToast(e.message, true);
+      }
       return;
     }
     if (action === 'toggle') {
-      const updated = await challengeService.toggleChallengeStatus(challenge.id);
-      setChallenges(prev => prev.map(c => c.id === challenge.id ? updated : c));
-      showToast(`Challenge ${updated.status === 'published' ? 'published' : 'unpublished'}.`);
+      try {
+        const newStatus = challenge.status === 'published' ? 'draft' : 'published';
+        await challengeService.setChallengeStatus(challenge.id, newStatus);
+        await load();
+        showToast(`Challenge ${newStatus === 'published' ? 'published' : 'unpublished'}.`);
+      } catch (e) {
+        showToast(e.message, true);
+      }
       return;
     }
     if (action === 'schedule') {
@@ -170,14 +212,20 @@ export default function ManageChallenges() {
 
   const confirmSchedule = async () => {
     setScheduleBusy(true);
-    const updated = await challengeService.scheduleChallenge(scheduleModal.id, scheduleAt);
-    setChallenges(prev => prev.map(c => c.id === scheduleModal.id ? updated : c));
-    setScheduleBusy(false);
-    setScheduleModal(null);
-    if (updated.status === 'scheduled') {
-      showToast(`"${updated.title}" will auto-publish at ${scheduleAt.replace('T', ' ')}.`, 'var(--accent-orange)');
-    } else {
-      showToast(`Schedule cleared for "${updated.title}".`);
+    try {
+      const newStatus = scheduleAt ? 'scheduled' : 'draft';
+      await challengeService.setChallengeStatus(scheduleModal.id, newStatus, scheduleAt);
+      await load();
+      setScheduleModal(null);
+      if (newStatus === 'scheduled') {
+        showToast(`"${scheduleModal.title}" will auto-publish at ${scheduleAt.replace('T', ' ')}.`);
+      } else {
+        showToast(`Schedule cleared for "${scheduleModal.title}".`);
+      }
+    } catch (e) {
+      showToast(e.message, true);
+    } finally {
+      setScheduleBusy(false);
     }
   };
 
@@ -230,57 +278,41 @@ export default function ManageChallenges() {
         showToast(`Exported ${challenges.length} challenge${challenges.length !== 1 ? 's' : ''} to PDF.`);
       }
     } catch {
-      showToast('Export failed.', 'var(--accent-red)');
+      showToast('Export failed.', true);
     }
     setExportBusy('');
-  };
-
-  const importExcel = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setImportBusy(true);
-    try {
-      const sheets = await parseExcelFile(file);
-      let items = [];
-      const full = sheets.find(s => s.name === 'Full Data');
-      if (full && full.rows.length) {
-        items = full.rows.map(r => (r.payload ? JSON.parse(r.payload) : r));
-      } else if (sheets[0]) {
-        items = sheets[0].rows;
-      }
-      if (!items.length) throw new Error('Empty workbook.');
-      const result = await challengeService.importChallenges(items);
-      await load();
-      showToast(`Imported ${result.imported} challenge${result.imported !== 1 ? 's' : ''} (${result.added} new).`);
-    } catch {
-      showToast('Import failed — invalid Excel file.', 'var(--accent-red)');
-    }
-    setImportBusy(false);
   };
 
   const confirmDelete = async () => {
     if (!deleteModal) return;
     setDeleting(true);
-    await challengeService.deleteChallenge(deleteModal.id);
-    setChallenges(prev => prev.filter(c => c.id !== deleteModal.id));
-    setDeleteModal(null);
-    setDeleting(false);
-    showToast('Challenge deleted.');
+    try {
+      await challengeService.deleteChallenge(deleteModal.id);
+      setChallenges(prev => prev.filter(c => c.id !== deleteModal.id));
+      setDeleteModal(null);
+      showToast('Challenge deleted.');
+    } catch (e) {
+      showToast(e.message, true);
+    } finally {
+      setDeleting(false);
+    }
   };
 
-  if (loading) return <LoadingSpinner fullPage text="Loading challenges..." />;
+  if (loading && challenges.length === 0) {
+    return <LoadingSpinner fullPage text="Loading challenges..." />;
+  }
 
   return (
     <div className="page-container">
-      {/* Toast */}
+      {/* Inline toast */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 3000,
-          background: 'var(--bg-card)', border: `1px solid ${toast.color}`,
+          background: 'var(--bg-card)', border: `1px solid ${toast.isError ? 'var(--accent-red)' : 'var(--accent-green)'}`,
           borderRadius: 10, padding: '12px 20px',
           fontFamily: 'var(--font-mono)', fontSize: '0.85rem',
-          color: toast.color, boxShadow: 'var(--shadow-lg)',
+          color: toast.isError ? 'var(--accent-red)' : 'var(--accent-green)',
+          boxShadow: 'var(--shadow-lg)',
           animation: 'fadeInUp 0.3s ease',
         }}>
           <CheckCircle size={14} style={{ marginRight: 8 }} /> {toast.msg}
@@ -293,22 +325,49 @@ export default function ManageChallenges() {
           <h1 style={{ margin: 0 }}>Manage Challenges</h1>
         </div>
         <div className="d-flex gap-2 flex-wrap align-items-center">
-          <ExportMenu onExport={exportChallenges} busy={!!exportBusy} />
-          <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2" onClick={() => fileRef.current?.click()} disabled={importBusy}>
-            {importBusy ? <span className="spinner-border spinner-border-sm" /> : <Upload size={14} />} Import Excel
+          <button className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2" onClick={load} disabled={loading}>
+            <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
           </button>
-          <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={importExcel} />
+          <ExportMenu onExport={exportChallenges} busy={!!exportBusy} />
           <Link to="/admin/challenges/new" className="btn btn-primary d-flex align-items-center gap-2">
             <Plus size={16} /> Create Challenge
           </Link>
         </div>
       </div>
 
-      {/* Search */}
-      <div style={{ position: 'relative', maxWidth: 400, marginBottom: 20 }}>
-        <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-        <input className="form-control" style={{ paddingLeft: 36 }} placeholder="Search challenges..."
-          value={search} onChange={e => setSearch(e.target.value)} />
+      {/* Error */}
+      {error && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.28)',
+          borderRadius: 10, padding: '12px 16px', marginBottom: 20,
+          color: 'var(--accent-red)', fontSize: '0.85rem',
+        }}>
+          <AlertTriangle size={16} /> {error}
+          <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={load}>Retry</button>
+        </div>
+      )}
+
+      {/* Search + status filter */}
+      <div className="d-flex align-items-center gap-3 flex-wrap mb-3">
+        <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: 400 }}>
+          <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input className="form-control" style={{ paddingLeft: 36 }} placeholder="Search challenges..."
+            value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div style={{ display: 'inline-flex', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 8, padding: 3 }}>
+          {['all', 'published', 'draft', 'scheduled'].map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)} style={{
+              fontFamily: 'var(--font-mono)', fontSize: '0.72rem', fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.05em',
+              border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer',
+              background: statusFilter === s ? 'rgba(61,221,208,0.14)' : 'transparent',
+              color: statusFilter === s ? 'var(--accent-cyan)' : 'var(--text-muted)',
+            }}>
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Table */}
@@ -323,10 +382,12 @@ export default function ManageChallenges() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {loading && challenges.length === 0 ? (
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Loading challenges...</td></tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                    No challenges found
+                    {error ? 'Failed to load challenges' : 'No challenges found'}
                   </td>
                 </tr>
               ) : (
@@ -344,9 +405,7 @@ export default function ManageChallenges() {
                     <td><span className={`diff-badge diff-${c.difficulty.toLowerCase()}`}>{c.difficulty}</span></td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-green)' }}>{c.points}</td>
                     <td style={{ fontFamily: 'var(--font-mono)' }}>{c.solves}</td>
-                    <td>
-                      {statusChip(c)}
-                    </td>
+                    <td>{statusChip(c)}</td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{c.createdAt}</td>
                     <td><ActionMenu challenge={c} onAction={handleAction} /></td>
                   </tr>

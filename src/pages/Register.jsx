@@ -37,15 +37,20 @@ export default function Register() {
     if (form.username.length < 3) { setError('Username must be at least 3 characters.'); return; }
     if (form.username.length > 20 || !/^[a-zA-Z0-9_]+$/.test(form.username)) { setError('Username must be 3–20 characters. Letters, numbers, and underscores only.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { setError('Enter a valid email address.'); return; }
-    if (form.password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    // Minimum length and the all-numeric rule mirror the backend's
+    // MinimumLengthValidator (8) and NumericPasswordValidator, so a user is
+    // not allowed past this form only to be rejected by the API.
+    if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (/^\d+$/.test(form.password)) { setError('Password cannot be entirely numbers.'); return; }
     if (form.password !== form.confirm) { setError('Passwords do not match.'); return; }
     setLoading(true);
     try {
-      await register(form.username, form.email, form.password);
+      // The API requires an explicit `password2` confirmation field.
+      await register(form.username, form.email, form.password, form.confirm);
       setSuccess(true);
       setTimeout(() => navigate('/dashboard'), 1200);
     } catch (err) {
-      setError(err.message || 'Registration failed.');
+      setError(err?.message || 'Registration failed.');
     }
     setLoading(false);
   };
@@ -125,9 +130,10 @@ export default function Register() {
                     <input
                       className="form-control"
                       type={showPw ? 'text' : 'password'}
-                      placeholder="Min. 6 characters"
+                      placeholder="Min. 8 characters"
                       value={form.password}
                       onChange={e => set('password', e.target.value)}
+                      autoComplete="new-password"
                       style={{ paddingRight: 44 }}
                     />
                     <button type="button" onClick={() => setShowPw(s => !s)} style={{
@@ -163,6 +169,7 @@ export default function Register() {
                     placeholder="Repeat password"
                     value={form.confirm}
                     onChange={e => set('confirm', e.target.value)}
+                    autoComplete="new-password"
                     style={{ borderColor: form.confirm && form.password !== form.confirm ? 'var(--accent-red)' : '' }}
                   />
                   {form.confirm && form.password !== form.confirm && (
