@@ -4,7 +4,7 @@ import { challengeService } from '../../services/challengeService';
 import { useApp } from '../../context/AppContext';
 
 export default function HintCard({ hint, challengeId, index, onUnlocked }) {
-  const { user, isAuthenticated, updateUser } = useApp();
+  const { user, isAuthenticated, updateUser, refreshStats } = useApp();
   // Seed from the server payload so previously-unlocked hints survive a reload;
   // the server only ever sends text for hints this user has unlocked.
   const [revealed, setRevealed] = useState(Boolean(hint.revealed));
@@ -36,6 +36,8 @@ export default function HintCard({ hint, challengeId, index, onUnlocked }) {
       if (typeof res.remainingPoints === 'number') {
         updateUser({ points: res.remainingPoints });
       }
+      // Hint spending changed the balance and the recent-activity feed.
+      refreshStats();
       onUnlocked?.(hint.id, res);
     } catch (err) {
       setError(err?.message || 'Could not unlock this hint. Please try again.');

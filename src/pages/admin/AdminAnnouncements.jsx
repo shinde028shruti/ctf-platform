@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Megaphone, Plus, Info, AlertTriangle, Wrench, Trash2, Edit, Eye, EyeOff, X, RotateCcw } from 'lucide-react';
+import { toast } from 'react-toastify';
 import { announcementService } from '../../services/announcementService';
 import { adminService } from '../../services/adminService';
 import { useApp } from '../../context/AppContext';
@@ -20,6 +21,7 @@ export default function AdminAnnouncements() {
   const { user: currentUser } = useApp();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [saving, setSaving] = useState(false);
@@ -28,9 +30,16 @@ export default function AdminAnnouncements() {
   const [resetting, setResetting] = useState(false);
 
   const load = async () => {
-    const list = await announcementService.getAnnouncements();
-    setAnnouncements(list);
-    setLoading(false);
+    setLoading(true);
+    try {
+      const list = await announcementService.getAnnouncements();
+      setAnnouncements(list);
+      setError('');
+    } catch (err) {
+      setError(err?.message || 'Could not load announcements.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -46,7 +55,12 @@ export default function AdminAnnouncements() {
   };
 
   const save = async () => {
+    if (saving) return;
     if (!draft.title.trim()) return;
+    if (draft.showFrom && draft.showUntil && draft.showUntil <= draft.showFrom) {
+      toast.error('The end time must be later than the start time.');
+      return;
+    }
     setSaving(true);
     const payload = {
       title: draft.title.trim(),
@@ -56,38 +70,66 @@ export default function AdminAnnouncements() {
       showFrom: draft.showFrom || null,
       showUntil: draft.showUntil || null,
     };
-    if (editing === 'create') {
-      await announcementService.createAnnouncement(payload);
-    } else {
-      await announcementService.updateAnnouncement(editing.id, payload);
+    const isCreate = editing === 'create';
+    try {
+      if (isCreate) {
+        await announcementService.createAnnouncement(payload);
+      } else {
+        await announcementService.updateAnnouncement(editing.id, payload);
+      }
+      await adminService.logAction(currentUser?.username || 'admin', isCreate ? 'announcement.create' : 'announcement.update', payload.title);
+      toast.success(isCreate ? 'Announcement created.' : 'Announcement updated.');
+      setEditing(null);
+      await load();
+    } catch (err) {
+      // Preserve the user's input: keep the modal open and the draft intact.
+      toast.error(err?.message || 'Could not save the announcement.');
+    } finally {
+      setSaving(false);
     }
-    await adminService.logAction(currentUser?.username || 'admin', editing === 'create' ? 'announcement.create' : 'announcement.update', payload.title);
-    setSaving(false);
-    setEditing(null);
-    await load();
   };
 
   const remove = async () => {
+    if (deleting) return;
     setDeleting(true);
-    await announcementService.deleteAnnouncement(deleteTarget.id);
-    await adminService.logAction(currentUser?.username || 'admin', 'announcement.delete', deleteTarget.title);
-    setDeleting(false);
-    setDeleteTarget(null);
-    await load();
+    try {
+      await announcementService.deleteAnnouncement(deleteTarget.id);
+      await adminService.logAction(currentUser?.username || 'admin', 'announcement.delete', deleteTarget.title);
+      toast.success('Announcement deleted.');
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      toast.error(err?.message || 'Could not delete the announcement.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const toggleActive = async (a) => {
-    const next = await announcementService.updateAnnouncement(a.id, { active: !a.active });
-    setAnnouncements(prev => prev.map(x => x.id === a.id ? next : x));
+    try {
+      // Update the row only after the backend confirms, so a failed request
+      // never leaves the table showing a status the server did not accept.
+      const next = await announcementService.updateAnnouncement(a.id, { active: !a.active });
+      setAnnouncements(prev => prev.map(x => x.id === a.id ? next : x));
+      toast.success(next.active ? 'Announcement published.' : 'Announcement moved to draft.');
+    } catch (err) {
+      toast.error(err?.message || 'Could not change the announcement status.');
+    }
   };
 
 // Dismissals are per-account and client-side, so this only reopens the banners
 // for the admin's own browser — it cannot affect what players have closed.
 const resetDismissals = async () => {
     setResetting(true);
-    await announcementService.resetDismissals();
-    await adminService.logAction(currentUser?.username || 'admin', 'announcement.reset_dismissals', 'Own browser');
-    setResetting(false);
+    try {
+      await announcementService.resetDismissals();
+      await adminService.logAction(currentUser?.username || 'admin', 'announcement.reset_dismissals', 'Own browser');
+      toast.success('Your dismissed banners will show again.');
+    } catch (err) {
+      toast.error(err?.message || 'Could not reset dismissals.');
+    } finally {
+      setResetting(false);
+    }
   };
 
   const now = Date.now();
@@ -98,6 +140,19 @@ const resetDismissals = async () => {
   }
 
   const rows = [...announcements].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  if (error && rows.length === 0) {
+    return (
+      <div className="page-container">
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '60px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)', margin: '0 0 16px' }}>{error}</p>
+          <button className="btn btn-primary d-flex align-items-center gap-2" style={{ margin: '0 auto' }} onClick={load}>
+            <RotateCcw size={15} /> Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">

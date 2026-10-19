@@ -39,7 +39,7 @@ export default function Navbar() {
     return () => { document.body.style.overflow = ''; };
   }, [mobileNavOpen]);
 
-  const { unreadCount } = useApp();
+  const { unreadCount, loadNotifications } = useApp();
   const isLanding = location.pathname === '/';
   const isAbout = location.pathname === '/about';
   const showSearch = !isLanding && !isAbout;
@@ -116,7 +116,19 @@ export default function Navbar() {
 
               {/* Notifications */}
               <div ref={notifRef} style={{ position: 'relative' }}>
-                <button className="icon-btn" onClick={() => { setNotifOpen(o => !o); setProfileOpen(false); }}>
+                <button
+                  className="icon-btn"
+                  aria-label="Notifications"
+                  title="Notifications"
+                  onClick={() => {
+                    const next = !notifOpen;
+                    setNotifOpen(next);
+                    setProfileOpen(false);
+                    // Refresh on open so the panel and the badge reflect the
+                    // server rather than a stale snapshot.
+                    if (next) loadNotifications();
+                  }}
+                >
                   <Bell size={16} />
                   {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
                 </button>
@@ -129,12 +141,15 @@ export default function Navbar() {
                   className="avatar-btn"
                   onClick={() => { setProfileOpen(o => !o); setNotifOpen(false); }}
                 >
-                  {user?.username?.[0]?.toUpperCase() || 'U'}
+                  {user?.avatar
+                    ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : user?.username?.[0]?.toUpperCase() || 'U'}
                 </button>
                 {profileOpen && (
                   <div className="cf-dropdown" style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 1050 }}>
                     <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>{user?.username}</div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>{user?.displayName || user?.username}</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>@{user?.username}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontFamily: 'var(--font-mono)' }}>{user?.points?.toLocaleString()} pts</div>
                     </div>
                     <button className="cf-dropdown-item" onClick={() => { navigate('/profile'); setProfileOpen(false); }}>

@@ -1,8 +1,11 @@
 /**
  * adminService.js
  * Handles admin data: users, submissions, audit logs, solve history.
- * Currently uses mock data + localStorage (same pattern as challengeService).
- * TODO: Replace with real API calls when backend is ready.
+ *
+ * Real Django REST endpoints back user management (`/admin/users/`), group
+ * listing and the platform analytics aggregates (`/admin/analytics/`).
+ * Submission/audit-log reads remain mock + localStorage: no authoritative
+ * backend source exists for them yet.
  */
 
 import { adminUsers as mockUsers, adminSubmissions as mockSubmissions, auditLogs as mockAuditLogs } from '../data/admin';
@@ -112,5 +115,17 @@ export const adminService = {
 
   async listGroups() {
     return api.get('/admin/groups/');
+  },
+
+  /**
+   * Platform-wide Dashboard/Analytics aggregates. Admin only.
+   * GET /api/v1/admin/analytics/
+   *
+   * Every figure is derived server-side from real Solve / Submission / User
+   * records. There is no mock fallback: a failure propagates as ApiError so the
+   * pages can show an error state instead of stale numbers.
+   */
+  async getAdminAnalytics() {
+    return api.get('/admin/analytics/');
   },
 };

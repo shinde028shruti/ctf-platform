@@ -8,7 +8,9 @@ import { useApp } from '../context/AppContext';
 import useGreeting from '../hooks/useGreeting';
 import StatCard from '../components/ui/StatCard';
 import Terminal from '../components/ui/Terminal';
-import { challenges, categories } from '../data/challenges';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { challengeService } from '../services/challengeService';
+import { activityKey } from '../utils/activity';
 
 const termLines = [
   { type: 'cmd', text: './flaghunt --status', delay: 300 },
@@ -74,67 +76,124 @@ const heroStyle = {
 };
 
 export default function Dashboard() {
-  const { user } = useApp();
-  const [recentChallenges, setRecentChallenges] = useState([]);
+  const { user, stats, statsLoading, statsError, refreshStats } = useApp();
+  const [challenges, setChallenges] = useState([]);
+  const [challengesLoading, setChallengesLoading] = useState(true);
 
   const userType = user?.userType || 'student';
   const focusAreas = user?.onboarding?.focusAreas || [];
   const isStudent = userType === 'student';
-  const greeting = useGreeting(user?.username);
+  const greeting = useGreeting(user?.displayName || user?.username);
 
+  // The recommended/completed cards are driven by the real published challenge
+  // list, which already carries a per-challenge `solved` flag for the caller.
   useEffect(() => {
-    let unsolved;
-    if (isStudent) {
-      const diffOrder = { Easy: 0, Medium: 1, Hard: 2, Insane: 3 };
-      unsolved = challenges
-        .filter(c => !user?.solvedChallenges?.includes(c.id))
-        .sort((a, b) => {
-          const aMatch = focusAreas.includes(a.category) ? 0 : 1;
-          const bMatch = focusAreas.includes(b.category) ? 0 : 1;
-          if (aMatch !== bMatch) return aMatch - bMatch;
-          return diffOrder[a.difficulty] - diffOrder[b.difficulty];
-        })
-        .slice(0, 3);
-    } else {
-      unsolved = challenges.filter(c => !user?.solvedChallenges?.includes(c.id)).slice(0, 3);
-    }
-    setRecentChallenges(unsolved);
-  }, [user, isStudent, focusAreas]);
+    let cancelled = false;
+    setChallengesLoading(true);
+    (async () => {
+      try {
+        const list = await challengeService.getChallenges();
+        if (!cancelled) setChallenges(Array.isArray(list) ? list : []);
+      } catch {
+        if (!cancelled) setChallenges([]);
+      } finally {
+        if (!cancelled) setChallengesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   if (!user) return null;
 
+  // Show the loading state only until the first stats payload arrives; a later
+  // manual refresh keeps the last good data on screen instead of blanking it.
+  if (statsLoading && !stats) {
+    return (
+      <div className="page-container">
+        <LoadingSpinner fullPage text="Loading your dashboard..." />
+      </div>
+    );
+  }
+
+  if (statsError && !stats) {
+    return (
+      <div className="page-container">
+        <div style={{
+          background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+          borderRadius: 12, padding: '40px 24px', textAlign: 'center',
+        }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>
+            {statsError}
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={() => refreshStats()}>
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Backend-authoritative numbers. `spendable` is the balance (already net of
+  // hints); `earned` is the gross total before hint deductions.
+  const spendable = stats?.points ?? user.points ?? 0;
+  const earned = stats?.earnedPoints ?? 0;
+  const spentOnHints = stats?.spentOnHints ?? 0;
+  const solvedCount = stats?.solved ?? 0;
+  const rank = stats?.rank ?? null;
+
+  // Recommended = published & unsolved; completed = published & solved.
+  const diffOrder = { Easy: 0, Medium: 1, Hard: 2, Insane: 3 };
+  const unsolved = challenges.filter(c => !c.solved);
+  if (isStudent) {
+    unsolved.sort((a, b) => {
+      const aMatch = focusAreas.includes(a.category) ? 0 : 1;
+      const bMatch = focusAreas.includes(b.category) ? 0 : 1;
+      if (aMatch !== bMatch) return aMatch - bMatch;
+      return (diffOrder[a.difficulty] ?? 9) - (diffOrder[b.difficulty] ?? 9);
+    });
+  }
+  const recentChallenges = unsolved.slice(0, 3);
+
   const totalChallenges = challenges.length;
-  const solvedCount = user.solvedChallenges?.length || 0;
-  const completionPct = Math.min(100, Math.round((solvedCount / totalChallenges) * 100));
-  const elitePct = Math.min(100, Math.round((user.points / 10000) * 100));
-  const level = Math.floor(user.points / 500) + 1;
-  const levelPct = Math.round(((user.points % 500) / 500) * 100);
+  const completionPct = totalChallenges
+    ? Math.min(100, Math.round((solvedCount / totalChallenges) * 100))
+    : 0;
+  // Level / rank / Elite come from the server (see progression.py) so the
+  // Dashboard, Profile and Sidebar can never disagree. Nothing is recomputed
+  // here from the spendable balance - spending points never lowers a level.
+  const progression = stats?.progression ?? null;
+  const elitePct = progression?.elitePct ?? 0;
+  const level = progression?.level ?? 1;
+  const levelPct = progression?.progressPct ?? 0;
+  const tier = progression?.tier ?? '';
+  const isMaxLevel = progression?.isMax ?? false;
 
   const completedChallenges = challenges
-    .filter(c => user.solvedChallenges?.includes(c.id))
+    .filter(c => c.solved)
     .sort((a, b) => b.points - a.points);
 
-  const categoryStats = Object.entries(user.categoryStats || {})
-    .filter(([, v]) => v.solved > 0)
-    .sort((a, b) => b[1].points - a[1].points)
+  const categoryProgress = stats?.categoryProgress ?? [];
+  const categoryStats = categoryProgress
+    .filter(c => c.solved > 0)
+    .sort((a, b) => b.points - a.points)
     .slice(0, 5);
 
-  const avgPtsPerSolve = solvedCount ? Math.round(user.points / solvedCount) : 0;
+  const avgPtsPerSolve = solvedCount ? Math.round(earned / solvedCount) : 0;
   const bestCategory = categoryStats[0];
-  const catColor = name => categories.find(c => c.name === name)?.color || 'var(--accent-green)';
+  const catColor = name => categoryProgress.find(c => c.name === name)?.color || 'var(--accent-green)';
 
-  const catValues = Object.values(user.categoryStats || {});
-  const totalAvail = catValues.reduce((s, c) => s + c.total, 0);
-  const totalSolved = catValues.reduce((s, c) => s + c.solved, 0);
+  const totalAvail = categoryProgress.reduce((s, c) => s + c.total, 0);
+  const totalSolved = categoryProgress.reduce((s, c) => s + c.solved, 0);
   const overallPct = totalAvail ? Math.round((totalSolved / totalAvail) * 100) : 0;
-  const masteredCount = catValues.filter(c => c.total > 0 && c.solved / c.total >= 0.5).length;
-  const maxCatPts = categoryStats.length ? categoryStats[0][1].points : 1;
-  const bestCatColor = bestCategory ? catColor(bestCategory[0]) : 'var(--accent-green)';
+  const masteredCount = categoryProgress.filter(c => c.total > 0 && c.solved / c.total >= 0.5).length;
+  const maxCatPts = categoryStats.length ? categoryStats[0].points : 1;
+  const bestCatColor = bestCategory ? catColor(bestCategory.name) : 'var(--accent-green)';
+  const recentActivity = stats?.recentActivity ?? [];
 
   const statMeta = [
-    { icon: Zap, color: 'var(--accent-cyan)', bg: 'rgba(61,221,208,0.12)', value: user.points, label: 'Total Points' },
+    { icon: Zap, color: 'var(--accent-cyan)', bg: 'rgba(61,221,208,0.12)', value: spendable, label: 'Points Balance' },
     { icon: CheckCircle, color: 'var(--accent-green)', bg: 'rgba(116,100,220,0.12)', value: solvedCount, label: 'Challenges Solved' },
-    { icon: Medal, color: 'var(--accent-purple)', bg: 'rgba(139,92,246,0.12)', value: user.rank, label: 'Global Rank', prefix: '#', animate: false },
+    { icon: Medal, color: 'var(--accent-purple)', bg: 'rgba(139,92,246,0.12)', value: rank ?? '—', label: 'Global Rank', prefix: rank != null ? '#' : '', animate: false },
     { icon: Target, color: 'var(--accent-orange)', bg: 'rgba(249,115,22,0.12)', value: completionPct, label: 'Completion', suffix: '%' },
   ];
 
@@ -152,7 +211,7 @@ export default function Dashboard() {
                 </span>
               </div>
               <h1 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 800, margin: 0 }}>
-                {greeting}, <span style={{ color: 'var(--accent-green)' }}>{user.username}</span>.
+                {greeting}, <span style={{ color: 'var(--accent-green)' }}>{user.displayName || user.username}</span>.
               </h1>
               <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0', fontSize: '0.95rem', maxWidth: 520 }}>
                 {isStudent
@@ -193,7 +252,7 @@ export default function Dashboard() {
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Global Rank</div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.6rem', fontWeight: 800, color: 'var(--accent-green)', lineHeight: 1.1 }}>#{user.rank}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.6rem', fontWeight: 800, color: 'var(--accent-green)', lineHeight: 1.1 }}>{rank != null ? `#${rank}` : '—'}</div>
                   </div>
                   <div className="text-end">
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Level</div>
@@ -208,7 +267,10 @@ export default function Dashboard() {
                   <div className="cf-progress-bar" style={{ width: `${elitePct}%` }} />
                 </div>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 6, fontFamily: 'var(--font-mono)' }}>
-                  Level {level} · {levelPct}% to next
+                  {tier} · {isMaxLevel ? 'max level' : `${levelPct}% to next`}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 6, fontFamily: 'var(--font-mono)' }}>
+                  Earned {earned.toLocaleString()} · Spent {spentOnHints.toLocaleString()} on hints
                 </div>
               </div>
             </div>
@@ -234,7 +296,15 @@ export default function Dashboard() {
               </Link>
             </div>
             <div className="d-flex flex-column gap-3">
-              {recentChallenges.map(c => (
+              {challengesLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+                  <LoadingSpinner size={24} />
+                </div>
+              ) : recentChallenges.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', padding: '16px 0' }}>
+                  No recommendations right now. Nice work!
+                </div>
+              ) : recentChallenges.map(c => (
                 <Link key={c.id} to={`/challenges/${c.id}`} className="text-decoration-none">
                   <div style={{
                     background: 'var(--bg-card)',
@@ -256,7 +326,7 @@ export default function Dashboard() {
                       <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 4 }}>{c.title}</div>
                       <div className="d-flex align-items-center gap-2">
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--accent-green)' }}>{c.category}</span>
-                        <span className={`diff-badge diff-${c.difficulty.toLowerCase()}`}>{c.difficulty}</span>
+                        <span className={`diff-badge diff-${String(c.difficulty).toLowerCase()}`}>{c.difficulty}</span>
                       </div>
                     </div>
                     <div className="text-end">
@@ -290,7 +360,7 @@ export default function Dashboard() {
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Best category</div>
                         <div style={{ fontSize: '0.9rem', fontWeight: 700, color: bestCatColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {bestCategory ? bestCategory[0] : '—'}
+                          {bestCategory ? bestCategory.name : '—'}
                         </div>
                       </div>
                     </div>
@@ -309,7 +379,7 @@ export default function Dashboard() {
                       <div className="col-6 d-flex flex-column gap-2">
                         {[
                           { label: 'Avg pts / solve', value: avgPtsPerSolve },
-                          { label: 'Level progress', value: `${levelPct}% to L${level + 1}` },
+                          { label: 'Level progress', value: isMaxLevel ? `${tier} · max` : `${levelPct}% to L${level + 1}` },
                         ].map(m => (
                           <div key={m.label} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '10px 14px' }}>
                             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--text-muted)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{m.label}</div>
@@ -332,18 +402,18 @@ export default function Dashboard() {
                   <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', padding: '16px 0' }}>
                     No categories solved yet. Start with a challenge!
                   </div>
-                ) : categoryStats.map(([cat, stats]) => (
-                  <div key={cat} className="d-flex align-items-center gap-3">
-                    <span style={{ width: 9, height: 9, borderRadius: 3, background: catColor(cat), flexShrink: 0 }} />
+                ) : categoryStats.map(c => (
+                  <div key={c.name} className="d-flex align-items-center gap-3">
+                    <span style={{ width: 9, height: 9, borderRadius: 3, background: catColor(c.name), flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="d-flex justify-content-between align-items-center mb-1">
-                        <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>{cat}</span>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>{c.name}</span>
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          {stats.points} <span style={{ color: catColor(cat), fontWeight: 700 }}>pts</span>
+                          {c.points} <span style={{ color: catColor(c.name), fontWeight: 700 }}>pts</span>
                         </span>
                       </div>
                       <div className="cf-progress">
-                        <div className="cf-progress-bar" style={{ width: `${Math.max(3, (stats.points / maxCatPts) * 100)}%`, background: catColor(cat) }} />
+                        <div className="cf-progress-bar" style={{ width: `${Math.max(3, (c.points / maxCatPts) * 100)}%`, background: catColor(c.name) }} />
                       </div>
                     </div>
                   </div>
@@ -382,7 +452,7 @@ export default function Dashboard() {
                           <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</div>
                           <div className="d-flex align-items-center gap-2">
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.64rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--accent-green)' }}>{c.category}</span>
-                            <span className={`diff-badge diff-${c.difficulty.toLowerCase()}`}>{c.difficulty}</span>
+                            <span className={`diff-badge diff-${String(c.difficulty).toLowerCase()}`}>{c.difficulty}</span>
                           </div>
                         </div>
                         <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-green)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>{c.points} pts</div>
@@ -404,11 +474,15 @@ export default function Dashboard() {
           <div className="animate-fade-in-up delay-300">
             <div className="section-title mb-3">Recent Activity</div>
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
-              {(user.recentActivity || []).slice(0, 6).map((a, i) => (
-                <div key={a.id} style={{
+              {recentActivity.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', padding: '24px 16px' }}>
+                  No activity yet.
+                </div>
+              ) : recentActivity.slice(0, 6).map((a, i) => (
+                <div key={activityKey(a)} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '12px 16px',
-                  borderBottom: i < 5 ? '1px solid var(--border-color)' : 'none',
+                  borderBottom: i < Math.min(5, recentActivity.length - 1) ? '1px solid var(--border-color)' : 'none',
                 }}>
                   <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <ActivityIcon type={a.type} />
@@ -419,11 +493,15 @@ export default function Dashboard() {
                     </div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{timeAgo(a.timestamp)}</div>
                   </div>
-                  {a.points && (
+                  {a.type === 'hint' ? (
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-orange)', whiteSpace: 'nowrap' }}>
+                      −{a.cost}
+                    </span>
+                  ) : a.points ? (
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-green)', whiteSpace: 'nowrap' }}>
                       +{a.points}
                     </span>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>

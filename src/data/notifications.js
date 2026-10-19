@@ -1,65 +1,8 @@
-export const notifications = [
-  {
-    id: 1,
-    type: 'solve',
-    title: 'Challenge Solved!',
-    message: 'You captured the flag in JWT Jailbreak.',
-    detail: '+200 points added to your score.',
-    timestamp: '2026-09-10T14:32:00Z',
-    read: false,
-    icon: 'CheckCircle',
-  },
-  {
-    id: 2,
-    type: 'achievement',
-    title: 'New Achievement Unlocked',
-    message: 'You unlocked the "7 Day Streak" badge.',
-    detail: 'Keep it up! Login daily to maintain your streak.',
-    timestamp: '2026-09-09T00:00:00Z',
-    read: false,
-    icon: 'Trophy',
-  },
-  {
-    id: 3,
-    type: 'new_challenge',
-    title: 'New Challenge Available',
-    message: 'Kernel Panic has been added to Binary Exploitation.',
-    detail: 'This insane-difficulty challenge is worth 750 points.',
-    timestamp: '2026-09-08T10:00:00Z',
-    read: true,
-    icon: 'Zap',
-  },
-  {
-    id: 4,
-    type: 'event',
-    title: 'Event Registration Open',
-    message: 'FlagHunt CTF 2026 registration is now open.',
-    detail: 'Register your team before October 10th.',
-    timestamp: '2026-09-07T09:00:00Z',
-    read: true,
-    icon: 'Calendar',
-  },
-  {
-    id: 5,
-    type: 'rank',
-    title: 'Rank Update',
-    message: 'You moved up 3 positions on the leaderboard!',
-    detail: 'Current rank: #127. Keep solving challenges.',
-    timestamp: '2026-09-06T13:30:00Z',
-    read: true,
-    icon: 'TrendingUp',
-  },
-  {
-    id: 6,
-    type: 'hint',
-    title: 'Hint Revealed',
-    message: 'You revealed a hint for Memory Dump Mayhem.',
-    detail: '-25 points deducted from your score.',
-    timestamp: '2026-09-06T11:05:00Z',
-    read: true,
-    icon: 'Lightbulb',
-  },
-];
+// Static achievement-badge definitions only.
+//
+// There is deliberately no mock notification list here any more: notifications
+// are fetched live from /api/v1/notifications/ by services/notificationService.
+// `badges` is unrelated display data still consumed by the Profile page.
 
 export const badges = [
   {

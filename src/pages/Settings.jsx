@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { User, Lock, Bell, Trash2, Eye, EyeOff, Save, GraduationCap, Swords } from 'lucide-react';
+import { User, Lock, Bell, Trash2, Eye, EyeOff, Save, GraduationCap, Swords, Upload } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { authService } from '../services/authService';
 
@@ -47,6 +47,7 @@ export default function Settings() {
     bio: user?.bio || '',
     website: user?.website || '',
     twitter: user?.twitter || '',
+    github: user?.github || '',
   });
 
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
@@ -67,6 +68,44 @@ export default function Settings() {
 
   const [busy, setBusy] = useState(null); // 'profile' | 'security' | 'notif'
 
+  // Avatar uploads go straight to the API; `avatarBusy` is kept separate from
+  // `busy` so the photo controls and the text form can be in flight together
+  // (or not) without one hiding the other's spinner.
+  const avatarInputRef = useRef(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+
+  const onAvatarSelected = async (e) => {
+    const file = e.target.files?.[0];
+    // Reset so choosing the same file again still fires a change event.
+    e.target.value = '';
+    if (!file) return;
+
+    setAvatarBusy(true);
+    try {
+      const updated = await authService.uploadAvatar(file);
+      updateUser(updated);
+      toast.success('Profile photo updated.');
+    } catch (err) {
+      // The previous avatar stays in place and the form keeps its values.
+      toast.error(err?.message || 'Could not upload that image.');
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const onAvatarRemove = async () => {
+    setAvatarBusy(true);
+    try {
+      const updated = await authService.removeAvatar();
+      updateUser(updated);
+      toast.success('Profile photo removed.');
+    } catch (err) {
+      toast.error(err?.message || 'Could not remove the photo.');
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
   const saveProfile = async () => {
     if (!profile.displayName.trim()) { toast.error('Display name cannot be empty.'); return; }
     setBusy('profile');
@@ -76,6 +115,7 @@ export default function Settings() {
         bio: profile.bio,
         website: profile.website,
         twitter: profile.twitter,
+        github: profile.github,
       });
       updateUser(updated);
       toast.success('Profile saved successfully.');
@@ -87,28 +127,44 @@ export default function Settings() {
 
   const savePassword = async () => {
     if (!pw.current) { toast.error('Enter your current password.'); return; }
-    if (pw.next.length < 6) { toast.error('New password must be at least 6 characters.'); return; }
+    if (!pw.next) { toast.error('Enter a new password.'); return; }
     if (pw.next !== pw.confirm) { toast.error('New passwords do not match.'); return; }
     setBusy('security');
-    await new Promise(r => setTimeout(r, 600));
-    setPw({ current: '', next: '', confirm: '' });
-    toast.success('Password changed successfully.');
+    try {
+      await authService.changePassword(pw.current, pw.next, pw.confirm);
+      setPw({ current: '', next: '', confirm: '' });
+      toast.success('Password changed. Please sign in again.');
+      // The server blacklisted every refresh token, so this session can no
+      // longer be renewed. Sign out cleanly and send the user to login.
+      await logout();
+      window.location.href = '/login';
+    } catch (e) {
+      toast.error(e?.message || 'Could not change your password.');
+      setBusy(null);
+    }
+  };
+
+  const saveNotifs = async () => {
+    setBusy('notif');
+    try {
+      const updated = await authService.updatePreferences({ notificationPrefs: notifPrefs });
+      updateUser(updated);
+      toast.success('Notification preferences saved.');
+    } catch (e) {
+      toast.error(e?.message || 'Could not save notification preferences.');
+    }
     setBusy(null);
   };
 
-  const saveNotifs = () => {
-    setBusy('notif');
-    setTimeout(() => {
-      updateUser({ notifPrefs });
-      toast.success('Notification preferences saved.');
-      setBusy(null);
-    }, 400);
-  };
-
-  const saveVisibility = () => {
+  const saveVisibility = async () => {
     setBusy('privacy');
-    updateUser({ profileVisibility: visibility });
-    toast.success(visibility === 'public' ? 'Your profile is now public.' : 'Your profile is now private.');
+    try {
+      const updated = await authService.updatePreferences({ profileVisibility: visibility });
+      updateUser(updated);
+      toast.success(visibility === 'public' ? 'Your profile is now public.' : 'Your profile is now private.');
+    } catch (e) {
+      toast.error(e?.message || 'Could not save your privacy setting.');
+    }
     setBusy(null);
   };
 
@@ -152,6 +208,54 @@ export default function Settings() {
         <div className="col-lg-9">
           {tab === 'profile' && (
             <div className="animate-fade-in">
+              <Section title="Profile Photo">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                  <div style={{
+                    width: 84, height: 84, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+                    background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))',
+                    border: '2px solid var(--border-bright)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontFamily: 'var(--font-mono)', fontSize: '1.9rem', fontWeight: 900, color: '#0A0917',
+                  }}>
+                    {user?.avatar
+                      ? <img src={user.avatar} alt="Profile photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : (user?.username?.[0] || 'U').toUpperCase()}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/gif,image/webp"
+                        style={{ display: 'none' }}
+                        onChange={onAvatarSelected}
+                      />
+                      <button
+                        className="btn btn-primary btn-sm d-flex align-items-center gap-2"
+                        onClick={() => avatarInputRef.current?.click()}
+                        disabled={avatarBusy}
+                      >
+                        {avatarBusy ? <span className="spinner-border spinner-border-sm" /> : <Upload size={14} />}
+                        {user?.avatar ? 'Replace Photo' : 'Upload Photo'}
+                      </button>
+                      {user?.avatar && (
+                        <button
+                          className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2"
+                          onClick={onAvatarRemove}
+                          disabled={avatarBusy}
+                        >
+                          <Trash2 size={14} /> Remove
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      PNG, JPEG, GIF or WebP. Up to 2 MB.
+                    </div>
+                  </div>
+                </div>
+              </Section>
+
               <Section title="Public Profile">
                 <div className="row g-3 mb-4">
                   <div className="col-md-6">
@@ -176,6 +280,10 @@ export default function Settings() {
                   <div className="col-md-6">
                     <label className="form-label">Twitter</label>
                     <input className="form-control" placeholder="@handle" value={profile.twitter} onChange={e => setProfile(p => ({ ...p, twitter: e.target.value }))} />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">GitHub</label>
+                    <input className="form-control" placeholder="username" value={profile.github} onChange={e => setProfile(p => ({ ...p, github: e.target.value }))} />
                   </div>
                 </div>
                 <button className="btn btn-primary d-flex align-items-center gap-2" onClick={saveProfile} disabled={busy === 'profile'} style={{ minWidth: 120 }}>

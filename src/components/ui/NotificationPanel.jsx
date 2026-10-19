@@ -1,14 +1,25 @@
 import React from 'react';
-import { CheckCircle, Trophy, Zap, Calendar, TrendingUp, Lightbulb, Bell, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import {
+  CheckCircle, Trophy, Zap, Calendar, TrendingUp, Lightbulb, Bell,
+  Trash2, CheckCheck, AlertTriangle,
+} from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import LoadingSpinner from './LoadingSpinner';
 
 const iconMap = {
   CheckCircle, Trophy, Zap, Calendar, TrendingUp, Lightbulb, Bell,
 };
 
 const typeColors = {
-  solve: 'var(--accent-green)',
+  // Server vocabulary.
+  system: 'var(--accent-green)',
+  challenge: 'var(--accent-green)',
   achievement: 'var(--accent-green)',
+  announcement: 'var(--accent-cyan)',
+  // Legacy keys kept so any older cached shape still renders.
+  solve: 'var(--accent-green)',
   new_challenge: 'var(--accent-cyan)',
   event: 'var(--accent-green)',
   rank: 'var(--accent-purple)',
@@ -16,6 +27,7 @@ const typeColors = {
 };
 
 function timeAgo(ts) {
+  if (!ts) return '';
   const diff = (Date.now() - new Date(ts)) / 1000;
   if (diff < 60) return 'just now';
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
@@ -23,8 +35,55 @@ function timeAgo(ts) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+/**
+ * A destination is only followed when it is a same-application path. This
+ * mirrors the server-side rule (see notifications.models.validate_destination_url)
+ * and means a `javascript:` or absolute URL can never be navigated to.
+ */
+function safeDestination(value) {
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')
+    ? value
+    : null;
+}
+
 export default function NotificationPanel({ onClose }) {
-  const { notifications, markNotifRead, clearAllNotifications } = useApp();
+  const {
+    notifications, unreadCount, notificationsLoading, notificationsError,
+    markNotifRead, markAllNotifsRead, deleteNotification, loadNotifications,
+  } = useApp();
+  const navigate = useNavigate();
+
+  const handleOpen = async (n) => {
+    const target = safeDestination(n.destination);
+    try {
+      if (!n.read) await markNotifRead(n.id);
+      if (target) {
+        if (onClose) onClose();
+        navigate(target);
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Could not update the notification.');
+    }
+  };
+
+  const handleDelete = async (event, id) => {
+    event.stopPropagation();
+    try {
+      await deleteNotification(id);
+    } catch (err) {
+      toast.error(err?.message || 'Could not delete the notification.');
+    }
+  };
+
+  const handleMarkAll = async () => {
+    try {
+      await markAllNotifsRead();
+    } catch (err) {
+      toast.error(err?.message || 'Could not mark notifications as read.');
+    }
+  };
+
+  const showLoading = notificationsLoading && notifications.length === 0;
 
   return (
     <div className="notif-panel">
@@ -34,19 +93,34 @@ export default function NotificationPanel({ onClose }) {
         padding: '14px 16px', borderBottom: '1px solid var(--border-color)',
       }}>
         <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Notifications</span>
-        {notifications.length > 0 && (
+        {unreadCount > 0 && (
           <button
-            onClick={() => clearAllNotifications()}
+            onClick={handleMarkAll}
             style={{ background: 'none', border: 'none', color: 'var(--accent-green)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 4 }}
           >
-            <Trash2 size={12} /> Clear all
+            <CheckCheck size={12} /> Mark all read
           </button>
         )}
       </div>
 
       {/* List */}
       <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-        {notifications.length === 0 ? (
+        {showLoading ? (
+          <div style={{ padding: '32px 16px', display: 'flex', justifyContent: 'center' }}>
+            <LoadingSpinner size={24} text="Loading…" />
+          </div>
+        ) : notificationsError && notifications.length === 0 ? (
+          <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>
+            <AlertTriangle size={18} style={{ color: 'var(--accent-red)', marginBottom: 8 }} />
+            <div>{notificationsError}</div>
+            <button
+              onClick={() => loadNotifications()}
+              style={{ marginTop: 12, background: 'none', border: '1px solid var(--border-bright)', borderRadius: 8, color: 'var(--accent-green)', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'var(--font-mono)', padding: '6px 12px' }}
+            >
+              Retry
+            </button>
+          </div>
+        ) : notifications.length === 0 ? (
           <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>
             No notifications
           </div>
@@ -58,7 +132,7 @@ export default function NotificationPanel({ onClose }) {
               <div
                 key={n.id}
                 className={`notif-item ${!n.read ? 'unread' : ''}`}
-                onClick={() => markNotifRead(n.id)}
+                onClick={() => handleOpen(n)}
               >
                 <div className="notif-icon" style={{ color, background: `${color}15` }}>
                   <IconComp size={16} />
@@ -74,6 +148,15 @@ export default function NotificationPanel({ onClose }) {
                     background: 'var(--accent-green)', flexShrink: 0, alignSelf: 'center',
                   }} />
                 )}
+                <button
+                  type="button"
+                  aria-label="Delete notification"
+                  title="Delete"
+                  onClick={(event) => handleDelete(event, n.id)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0, alignSelf: 'center', padding: 2 }}
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             );
           })

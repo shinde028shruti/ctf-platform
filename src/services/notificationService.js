@@ -1,71 +1,77 @@
 /**
  * notificationService.js
- * Handles user notification data.
- * TODO: Replace with real-time WebSocket or polling endpoint.
+ * The authenticated user's in-app notifications, from the Django REST API.
+ *
+ * Responses are normalised into the field names the existing NotificationPanel
+ * already reads (`read`, `timestamp`, `icon`) so the component stays
+ * presentation-only and its markup is unchanged.
+ *
+ * There is deliberately NO mock or localStorage fallback: if the API is
+ * unreachable the caller shows an error rather than inventing notifications.
  */
 
-import { notifications as mockNotifications } from '../data/notifications';
+import { api } from './api';
 
-const NOTIF_KEY = 'cyberforge_notifications';
-const delay = (ms = 300) => new Promise(res => setTimeout(res, ms));
-
-const getStored = () => {
-  const raw = localStorage.getItem(NOTIF_KEY);
-  if (raw) {
-    try { return JSON.parse(raw); } catch { /* fall through */ }
-  }
-  return mockNotifications;
+/** Closed server vocabulary -> the lucide icon name the panel renders. */
+const TYPE_ICON = {
+  system: 'Bell',
+  challenge: 'CheckCircle',
+  achievement: 'Trophy',
+  announcement: 'Calendar',
 };
 
-const save = (data) => localStorage.setItem(NOTIF_KEY, JSON.stringify(data));
+/** Map one API row onto the shape the panel consumes. */
+function normalise(raw) {
+  const type = raw?.type || 'system';
+  return {
+    id: raw?.id,
+    type,
+    title: raw?.title ?? '',
+    message: raw?.message ?? '',
+    // Same-app path or ''. Never trusted blindly - the panel re-checks it
+    // before navigating.
+    destination: raw?.destination_url || '',
+    read: Boolean(raw?.is_read),
+    timestamp: raw?.created_at ?? null,
+    icon: TYPE_ICON[type] || 'Bell',
+  };
+}
 
 export const notificationService = {
   /**
-   * Get all notifications for current user.
-   * TODO: Replace with GET /api/notifications
+   * GET /notifications/ - the caller's own notifications, newest first.
+   * Returns the first page of results (the endpoint is paginated with the
+   * project's standard {count,next,previous,results} envelope).
    */
-  async getNotifications() {
-    await delay();
-    return getStored();
+  async getNotifications({ limit = 50 } = {}) {
+    const data = await api.get(`/notifications/?limit=${limit}`);
+    const results = Array.isArray(data) ? data : (data?.results ?? []);
+    return results.map(normalise);
   },
 
-  /**
-   * Mark a notification as read.
-   * TODO: Replace with PATCH /api/notifications/:id/read
-   */
-  async markRead(id) {
-    const notifs = getStored();
-    const updated = notifs.map(n => n.id === id ? { ...n, read: true } : n);
-    save(updated);
-    return updated;
-  },
-
-  /**
-   * Mark all notifications as read.
-   * TODO: Replace with PATCH /api/notifications/read-all
-   */
-  async markAllRead() {
-    const notifs = getStored();
-    const updated = notifs.map(n => ({ ...n, read: true }));
-    save(updated);
-    return updated;
-  },
-
-  /**
-   * Clear all notifications.
-   * TODO: Replace with DELETE /api/notifications
-   */
-  async clearAll() {
-    save([]);
-    return [];
-  },
-
-  /**
-   * Get unread count.
-   * TODO: Replace with GET /api/notifications/unread-count
-   */
+  /** GET /notifications/unread-count/ - never negative. */
   async getUnreadCount() {
-    const notifs = getStored();
-    return notifs.filter(n => !n.read).length;
+    const data = await api.get('/notifications/unread-count/');
+    const value = data?.unread_count;
+    return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+  },
+
+  /** PATCH /notifications/{id}/read/ - idempotent; returns the updated row. */
+  async markRead(id) {
+    const data = await api.patch(`/notifications/${id}/read/`, {});
+    return normalise(data);
+  },
+
+  /** POST /notifications/mark-all-read/ - returns the number updated. */
+  async markAllRead() {
+    const data = await api.post('/notifications/mark-all-read/', {});
+    return data?.updated ?? 0;
+  },
+
+  /** DELETE /notifications/{id}/ - owner-only. */
+  async deleteNotification(id) {
+    await api.delete(`/notifications/${id}/`);
   },
 };
+
+export { normalise };

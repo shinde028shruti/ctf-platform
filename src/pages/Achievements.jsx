@@ -1,62 +1,57 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Award, Trophy, CheckCircle2, Compass, BookOpen } from 'lucide-react';
-import { useApp } from '../context/AppContext';
-import { achievements, setInsaneChallengeIds } from '../data/achievements';
-import { challenges } from '../data/challenges';
+import React, { useEffect, useState } from 'react';
+import { Award, Trophy, CheckCircle2, Compass, BookOpen, RotateCcw } from 'lucide-react';
 import AchievementBadge from '../components/ui/AchievementBadge';
-import { achievementService, resolveIcon, evaluate, describeCriteria } from '../services/achievementService';
-
-setInsaneChallengeIds(
-  challenges.filter(c => c.difficulty === 'Insane' || c.id === 24).map(c => c.id)
-);
+import { achievementService, resolveIcon } from '../services/achievementService';
 
 export default function Achievements() {
-  const { user } = useApp();
-  // Admin-authored badges live in localStorage; hidden ones are filtered out by
-  // the service so an admin can stage an achievement without exposing it.
-  const [custom, setCustom] = useState([]);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    let alive = true;
-    achievementService.getActiveAchievements().then(list => { if (alive) setCustom(list); });
-    return () => { alive = false; };
-  }, []);
+  const load = async () => {
+    setLoading(true);
+    try {
+      const list = await achievementService.getActiveAchievements();
+      setItems(list);
+      setError('');
+    } catch (err) {
+      setError(err?.message || 'Could not load your achievements.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const stats = useMemo(() => {
-    const solvedIdList = user?.solvedChallenges || [];
-    const builtin = achievements.map(a => ({
-      ...a,
-      earned: typeof a.check === 'function' ? a.check(user, solvedIdList) : false,
-      progress:
-        a.categoryKey && a.categoryStatsKey
-          ? { gained: user?.categoryStats?.[a.category]?.solved || 0 }
-          : null,
-    }));
-    // Same card shape as a built-in, but the verdict comes from the stored rule.
-    const authored = custom.map(a => {
-      const { earned, gained, target } = evaluate(a.criteria, user);
-      return {
-        id: a.id,
-        name: a.name,
-        description: a.description,
-        category: a.category,
-        icon: resolveIcon(a.icon),
-        gradient: a.gradient,
-        glow: `${a.gradient[0]}66`,
-        reward: a.reward,
-        earned,
-        custom: true,
-        progress: { gained, target },
-        rule: describeCriteria(a.criteria),
-      };
-    });
-    const list = [...builtin, ...authored];
-    const earnedCount = list.filter(a => a.earned).length;
-    return { list, earnedCount, total: list.length };
-  }, [user, custom]);
+  useEffect(() => { load(); }, []);
 
-  const bonus = stats.list.filter(a => a.earned).reduce((s, a) => s + a.reward, 0);
-  const pct = Math.round((stats.earnedCount / stats.total) * 100);
+  if (loading) {
+    return (
+      <div className="page-container" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+        Loading achievements...
+      </div>
+    );
+  }
+
+  if (error && items.length === 0) {
+    return (
+      <div className="page-container">
+        <div className="page-header animate-fade-in-up">
+          <div className="section-title mb-2">Collection</div>
+          <h1 style={{ margin: 0 }}>Achievements</h1>
+        </div>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '60px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)', margin: '0 0 16px' }}>{error}</p>
+          <button className="btn btn-primary d-flex align-items-center gap-2" style={{ margin: '0 auto' }} onClick={load}>
+            <RotateCcw size={15} /> Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const earnedCount = items.filter(a => a.earned).length;
+  const total = items.length;
+  const bonus = items.filter(a => a.earned).reduce((s, a) => s + (a.reward || 0), 0);
+  const pct = total > 0 ? Math.round((earnedCount / total) * 100) : 0;
 
   return (
     <div className="page-container">
@@ -79,7 +74,7 @@ export default function Achievements() {
           </div>
           <div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>
-              {stats.earnedCount}<span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>/{stats.total}</span>
+              {earnedCount}<span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>/{total}</span>
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 4 }}>Badges Unlocked</div>
           </div>
@@ -112,96 +107,102 @@ export default function Achievements() {
             <div className="cf-progress-bar" style={{ width: `${pct}%` }} />
           </div>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 8, fontFamily: 'var(--font-mono)' }}>
-            {stats.total - stats.earnedCount} more to discover
+            {total - earnedCount} more to discover
           </div>
         </div>
       </div>
 
-      {/* Grid */}
-      {stats.earnedCount > 0 && (
-        <div className="mb-4" style={{ background: 'linear-gradient(135deg, rgba(116,100,220,0.06) 0%, rgba(139,92,246,0.06) 100%)', border: '1px solid rgba(116,100,220,0.15)', borderRadius: 14, padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 14, fontFamily: 'var(--font-mono)' }}>
-          <CheckCircle2 size={18} color="var(--accent-green)" />
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            Newly unlocked: <strong style={{ color: 'var(--accent-green)' }}>{stats.list.filter(a => a.earned).map(a => a.name).join(', ')}</strong>
-          </span>
+      {/* Empty */}
+      {total === 0 ? (
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '60px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          No achievements are available yet. Check back soon.
         </div>
-      )}
+      ) : (
+        <>
+          {earnedCount > 0 && (
+            <div className="mb-4" style={{ background: 'linear-gradient(135deg, rgba(116,100,220,0.06) 0%, rgba(139,92,246,0.06) 100%)', border: '1px solid rgba(116,100,220,0.15)', borderRadius: 14, padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 14, fontFamily: 'var(--font-mono)' }}>
+              <CheckCircle2 size={18} color="var(--accent-green)" />
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                Unlocked: <strong style={{ color: 'var(--accent-green)' }}>{items.filter(a => a.earned).map(a => a.name).join(', ')}</strong>
+              </span>
+            </div>
+          )}
 
-      <div className="row g-3">
-        {stats.list.map((a, i) => (
-          <div key={a.id} className="col-12 col-sm-6 col-lg-4 col-xl-3">
-            <div
-              className="h-100 animate-fade-in-up"
-              style={{
-                animationDelay: `${i * 0.04}s`,
-                background: a.earned ? 'var(--bg-card)' : 'var(--bg-secondary)',
-                border: `1px solid ${a.earned ? 'rgba(116,100,220,0.25)' : 'var(--border-color)'}`,
-                borderRadius: 14,
-                padding: 22,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 14,
-                position: 'relative',
-                overflow: 'hidden',
-                opacity: a.earned ? 1 : 0.75,
-                transition: 'all 0.2s',
-              }}
-            >
-              {a.earned && (
-                <div style={{
-                  position: 'absolute', top: 0, right: 0, padding: '5px 12px',
-                  fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 700,
-                  letterSpacing: '0.1em', textTransform: 'uppercase',
-                  background: 'rgba(116,100,220,0.12)', borderBottomLeftRadius: 10,
-                  color: 'var(--accent-green)', borderLeft: '1px solid rgba(116,100,220,0.2)', borderBottom: '1px solid rgba(116,100,220,0.2)',
-                }}>
-                  Earned
-                </div>
-              )}
-
-              <div className="d-flex justify-content-between align-items-start">
-                <AchievementBadge icon={a.icon} image={a.image} gradient={a.gradient} glow={a.glow} locked={!a.earned} size={54} />
-                <span className="tag-chip" style={{ alignSelf: 'flex-start' }}>{a.category}</span>
-              </div>
-
-              <div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: a.earned ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                  {a.name}
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.55, marginTop: 4 }}>
-                  {a.description}
-                </div>
-              </div>
-
-              <div style={{ marginTop: 'auto' }}>
-                {a.earned ? (
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    Reward earned: <span style={{ color: 'var(--accent-green)' }}>+{a.reward} pts</span>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      {a.rule
-                        ? a.rule
-                        : <>Reward: <span style={{ color: 'var(--text-muted)' }}>+{a.reward} pts</span></>}
+          <div className="row g-3">
+            {items.map((a, i) => (
+              <div key={a.id} className="col-12 col-sm-6 col-lg-4 col-xl-3">
+                <div
+                  className="h-100 animate-fade-in-up"
+                  style={{
+                    animationDelay: `${i * 0.04}s`,
+                    background: a.earned ? 'var(--bg-card)' : 'var(--bg-secondary)',
+                    border: `1px solid ${a.earned ? 'rgba(116,100,220,0.25)' : 'var(--border-color)'}`,
+                    borderRadius: 14,
+                    padding: 22,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 14,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    opacity: a.earned ? 1 : 0.75,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {a.earned && (
+                    <div style={{
+                      position: 'absolute', top: 0, right: 0, padding: '5px 12px',
+                      fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 700,
+                      letterSpacing: '0.1em', textTransform: 'uppercase',
+                      background: 'rgba(116,100,220,0.12)', borderBottomLeftRadius: 10,
+                      color: 'var(--accent-green)', borderLeft: '1px solid rgba(116,100,220,0.2)', borderBottom: '1px solid rgba(116,100,220,0.2)',
+                    }}>
+                      Earned
                     </div>
-                    {a.progress?.target > 1 && (
+                  )}
+
+                  <div className="d-flex justify-content-between align-items-start">
+                    <AchievementBadge icon={resolveIcon(a.icon)} image={a.image} gradient={a.gradient} glow={`${a.gradient[0]}66`} locked={!a.earned} size={54} />
+                    <span className="tag-chip" style={{ alignSelf: 'flex-start' }}>{a.category}</span>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: a.earned ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                      {a.name}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.55, marginTop: 4 }}>
+                      {a.description}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 'auto' }}>
+                    {a.earned ? (
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        Reward earned: <span style={{ color: 'var(--accent-green)' }}>+{a.reward} pts</span>
+                      </div>
+                    ) : (
                       <>
-                        <div className="cf-progress" style={{ height: 4, marginTop: 8 }}>
-                          <div className="cf-progress-bar" style={{ width: `${Math.min(100, (a.progress.gained / a.progress.target) * 100)}%` }} />
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          {a.criteriaLabel || <>Reward: <span style={{ color: 'var(--text-muted)' }}>+{a.reward} pts</span></>}
                         </div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: 5 }}>
-                          {a.progress.gained} / {a.progress.target}
-                        </div>
+                        {a.progress?.target > 1 && (
+                          <>
+                            <div className="cf-progress" style={{ height: 4, marginTop: 8 }}>
+                              <div className="cf-progress-bar" style={{ width: `${Math.min(100, (a.progress.gained / a.progress.target) * 100)}%` }} />
+                            </div>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: 5 }}>
+                              {a.progress.gained} / {a.progress.target}
+                            </div>
+                          </>
+                        )}
                       </>
                     )}
-                  </>
-                )}
+                  </div>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       <div style={{
         marginTop: 32, padding: '28px', textAlign: 'center',

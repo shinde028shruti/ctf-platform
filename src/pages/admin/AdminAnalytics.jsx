@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { TrendingUp, Activity, Target, Trophy, Flag, Download, Radio, Users as UsersIcon, Zap } from 'lucide-react';
-import { challengeService } from '../../services/challengeService';
+import { TrendingUp, Activity, Target, Trophy, Flag, Download, Radio, Users as UsersIcon, Zap, RotateCcw } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { downloadCsv } from '../../utils/exportUtils';
 
@@ -11,76 +10,75 @@ const DIFF_COLORS = {
 const rating = (diff) => ({ easy: 1, medium: 2, hard: 3, insane: 4 }[diff] || 2);
 
 export default function AdminAnalytics() {
-  const [challenges, setChallenges] = useState([]);
-  const [solves, setSolves] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      const [c, s, u] = await Promise.all([
-        challengeService.getAllChallenges(),
-        adminService.getSolvesHistory(),
-        adminService.getUsers(),
-      ]);
-      setChallenges(c); setSolves(s); setUsers(u); setLoading(false);
-    })();
-  }, []);
+  const load = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setAnalytics(await adminService.getAdminAnalytics());
+    } catch (err) {
+      setError(err?.message || 'Could not load analytics.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
 
   const analysis = useMemo(() => {
-    const totalAttempts = solves.length;
-    const totalCorrect = solves.filter(s => s.correct).length;
-    const successRate = totalAttempts ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
-    const uniqueSolvers = new Set(solves.filter(s => s.correct).map(s => s.user)).size;
+    const totals = analytics?.totals ?? {};
 
-    const byChallenge = challenges.map(ch => {
-      const events = solves.filter(s => s.challengeId === ch.id);
-      const correct = events.filter(s => s.correct);
-      const firstBlood = correct.length
-        ? correct.reduce((a, b) => (a.submittedAt <= b.submittedAt ? a : b))
-        : null;
-      return {
-        ...ch,
-        attempts: events.length,
-        correct: correct.length,
-        successRate: events.length ? Math.round((correct.length / events.length) * 100) : null,
-        firstBlood,
-      };
-    }).sort((a, b) => b.correct - a.correct);
+    const byChallenge = (analytics?.per_challenge ?? [])
+      .map(c => ({
+        ...c,
+        successRate: c.success_rate,
+        firstBlood: c.first_blood
+          ? { user: c.first_blood.username, submittedAt: c.first_blood.at || '' }
+          : null,
+      }))
+      .sort((a, b) => b.correct - a.correct);
 
-    const topSolvers = [...solves
-      .filter(s => s.correct)
-      .reduce((m, s) => m.set(s.user, (m.get(s.user) || 0) + 1), new Map())]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([username, count], i) => ({
-        username,
-        count,
-        points: users.find(u => u.username === username)?.points || 0,
-        rank: i + 1,
-      }));
+    const topSolvers = (analytics?.top_solvers ?? []).map(s => ({ ...s, count: s.solves }));
 
-    const now = new Date();
-    const localKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const days = Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(now);
-      d.setDate(d.getDate() - (13 - i));
-      const label = `${d.getMonth() + 1}/${d.getDate()}`;
-      return { label, key: localKey(d), count: 0 };
-    });
-    const dayIndex = {};
-    days.forEach((d, i) => { dayIndex[d.key] = i; });
-    solves.filter(s => s.correct).forEach(s => {
-      const key = s.submittedAt.slice(0, 10);
-      if (key in dayIndex) days[dayIndex[key]].count += 1;
-    });
+    const days = (analytics?.solve_series ?? []).map(d => ({ label: d.label, count: d.count }));
     const maxDay = Math.max(1, ...days.map(d => d.count));
 
-    return { totalAttempts, totalCorrect, successRate, uniqueSolvers, byChallenge, topSolvers, days, maxDay };
-  }, [challenges, solves, users]);
+    return {
+      totalAttempts: totals.attempts ?? 0,
+      totalCorrect: totals.correct_submissions ?? 0,
+      successRate: totals.success_rate ?? 0,
+      uniqueSolvers: totals.unique_solvers ?? 0,
+      byChallenge,
+      topSolvers,
+      days,
+      maxDay,
+    };
+  }, [analytics]);
 
   if (loading) {
     return <div className="page-container" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>Loading analytics...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="page-container">
+        <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+          <div>
+            <div className="section-title mb-1">Admin</div>
+            <h1 style={{ margin: 0 }}>Challenge Analytics</h1>
+          </div>
+        </div>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '60px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)', margin: '0 0 16px' }}>{error}</p>
+          <button className="btn btn-primary d-flex align-items-center gap-2" style={{ margin: '0 auto' }} onClick={load}>
+            <RotateCcw size={15} /> Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const metricCards = [
@@ -99,7 +97,7 @@ export default function AdminAnalytics() {
         category: c.category,
         difficulty: c.difficulty,
         points: c.points,
-        solves: c.solves,
+        solves: c.solve_count,
         attempts: c.attempts,
         correct: c.correct,
         successRateMetric: c.successRate == null ? '' : `${c.successRate}%`,
@@ -230,7 +228,7 @@ export default function AdminAnalytics() {
                       {'▮'.repeat(rating(c.difficulty))}{'▯'.repeat(4 - rating(c.difficulty))}
                     </span>
                   </td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-green)' }}>{c.solves.toLocaleString()}</td>
+                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--accent-green)' }}>{c.solve_count.toLocaleString()}</td>
                   <td style={{ fontFamily: 'var(--font-mono)' }}>{c.attempts}</td>
                   <td style={{ fontFamily: 'var(--font-mono)', color: c.correct ? 'var(--accent-green)' : 'var(--text-muted)' }}>{c.correct}</td>
                   <td>

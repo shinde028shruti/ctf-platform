@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Plus, Search, Award, Sparkles, Trash2, Pencil, Eye, EyeOff, Gem,
+  Plus, Search, Award, Sparkles, Trash2, Pencil, Eye, EyeOff, Gem, RotateCcw,
 } from 'lucide-react';
+import { toast } from 'react-toastify';
 import Modal from '../../components/ui/Modal';
 import AchievementBadge from '../../components/ui/AchievementBadge';
 import { useApp } from '../../context/AppContext';
-import { categories } from '../../data/challenges';
+import { challengeService } from '../../services/challengeService';
 import { adminService } from '../../services/adminService';
 import {
   achievementService, ICON_CHOICES, resolveIcon,
-  CRITERIA_METRICS, DIFFICULTIES, RARITIES, GRADIENT_PRESETS,
-  metricMeta, describeCriteria,
+  CRITERIA_TYPES, criteriaMeta, RARITIES, GRADIENT_PRESETS, describeRule,
 } from '../../services/achievementService';
 
 const RARITY_COLORS = {
@@ -21,102 +21,216 @@ const RARITY_COLORS = {
   Legendary: '#f59e0b',
 };
 
+/** The draft mirrors the wire shape closely; `buildConfig` flattens the
+ *  rule-specific fields back into the `criteria_config` object the API wants. */
 const emptyDraft = () => ({
   name: '',
   description: '',
   category: 'General',
   icon: 'Trophy',
   gradient: GRADIENT_PRESETS[0],
+  image: '',
   rarity: 'Common',
   reward: 100,
   active: true,
-  criteria: { metric: 'solved_total', threshold: 5, category: null, difficulty: null },
+  criteriaType: 'first_solve',
+  target: 1,
+  categoryRef: '',
+  challengeRef: '',
 });
+
+const draftFrom = (a) => ({
+  name: a.name,
+  description: a.description,
+  category: a.category,
+  icon: a.icon,
+  gradient: a.gradient,
+  image: a.image,
+  rarity: a.rarity,
+  reward: a.reward,
+  active: a.active,
+  criteriaType: a.criteriaType || 'first_solve',
+  target: a.criteriaConfig?.target ?? 1,
+  categoryRef: a.criteriaConfig?.category ?? '',
+  challengeRef: a.criteriaConfig?.challenge ?? '',
+});
+
+const buildConfig = (draft) => {
+  switch (draft.criteriaType) {
+    case 'total_solves':
+      return { target: Math.max(1, Number(draft.target) || 1) };
+    case 'category_solves':
+      return {
+        category: Number(draft.categoryRef) || null,
+        target: Math.max(1, Number(draft.target) || 1),
+      };
+    case 'challenge_solved':
+      return { challenge: Number(draft.challengeRef) || null };
+    case 'first_solve':
+    default:
+      return {};
+  }
+};
+
+/** Raw DRF field errors from an ApiError -> { field: "message" }. */
+const extractFieldErrors = (err) => {
+  const data = err?.data;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  const out = {};
+  for (const [field, value] of Object.entries(data)) {
+    if (field === 'detail') continue;
+    out[field] = Array.isArray(value) ? value.filter(Boolean).join(' ') : String(value);
+  }
+  return out;
+};
 
 export default function AdminAchievements() {
   const { user: currentUser } = useApp();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState(emptyDraft);
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Real categories and challenges, loaded once for the rule pickers.
+  const [categories, setCategories] = useState([]);
+  const [challengeList, setChallengeList] = useState([]);
+
   const load = async () => {
-    setItems(await achievementService.getAchievements());
-    setLoading(false);
+    setLoading(true);
+    try {
+      const list = await achievementService.getAchievements();
+      setItems(list);
+      setError('');
+    } catch (err) {
+      setError(err?.message || 'Could not load achievements.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => { setDraft(emptyDraft()); setEditing('create'); };
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [cats, chs] = await Promise.all([
+          challengeService.getCategories(),
+          challengeService.getAllChallenges(),
+        ]);
+        if (!alive) return;
+        setCategories(Array.isArray(cats) ? cats : (cats?.results ?? []));
+        setChallengeList(Array.isArray(chs) ? chs : (chs?.results ?? []));
+      } catch {
+        // The rule pickers simply stay empty; the page itself still works and a
+        // save surfaces any server-side validation error.
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
-  const openEdit = (a) => {
-    setDraft({
-      name: a.name,
-      description: a.description,
-      category: a.category,
-      icon: a.icon,
-      gradient: a.gradient,
-      rarity: a.rarity,
-      reward: a.reward,
-      active: a.active,
-      criteria: { ...emptyDraft().criteria, ...a.criteria },
-    });
-    setEditing(a);
-  };
+  const categoryNames = useMemo(
+    () => Object.fromEntries(categories.map(c => [c.id, c.name])),
+    [categories],
+  );
+  const challengeTitles = useMemo(
+    () => Object.fromEntries(challengeList.map(c => [c.id, c.title])),
+    [challengeList],
+  );
+  const lookups = { categoryNames, challengeTitles };
+
+  const openCreate = () => { setDraft(emptyDraft()); setFieldErrors({}); setEditing('create'); };
+
+  const openEdit = (a) => { setDraft(draftFrom(a)); setFieldErrors({}); setEditing(a); };
 
   const save = async () => {
+    if (saving) return;
     if (!draft.name.trim()) return;
     setSaving(true);
+    setFieldErrors({});
     const payload = {
-      ...draft,
       name: draft.name.trim(),
       description: draft.description.trim(),
+      category: draft.category,
+      icon: draft.icon,
+      gradient: draft.gradient,
+      image: draft.image,
+      rarity: draft.rarity,
       reward: Number(draft.reward) || 0,
-      criteria: { ...draft.criteria, threshold: Number(draft.criteria.threshold) || 1 },
+      active: draft.active,
+      criteriaType: draft.criteriaType,
+      criteriaConfig: buildConfig(draft),
     };
-    if (editing === 'create') {
-      await achievementService.createAchievement(payload);
-    } else {
-      await achievementService.updateAchievement(editing.id, payload);
+    const isCreate = editing === 'create';
+    try {
+      if (isCreate) {
+        await achievementService.createAchievement(payload);
+      } else {
+        await achievementService.updateAchievement(editing.id, payload);
+      }
+      await adminService.logAction(
+        currentUser?.username || 'admin',
+        isCreate ? 'achievement.create' : 'achievement.update',
+        payload.name,
+      );
+      toast.success(isCreate ? 'Achievement created.' : 'Achievement updated.');
+      setEditing(null);
+      await load();
+    } catch (err) {
+      // A 400 carries per-field DRF messages; surface them next to the inputs
+      // instead of claiming success. The modal and the draft are preserved.
+      setFieldErrors(extractFieldErrors(err));
+      toast.error(err?.message || 'Could not save the achievement.');
+    } finally {
+      setSaving(false);
     }
-    await adminService.logAction(
-      currentUser?.username || 'admin',
-      editing === 'create' ? 'achievement.create' : 'achievement.update',
-      payload.name,
-    );
-    setSaving(false);
-    setEditing(null);
-    await load();
   };
 
   const remove = async () => {
+    if (deleting) return;
     setDeleting(true);
-    await achievementService.deleteAchievement(deleteTarget.id);
-    await adminService.logAction(currentUser?.username || 'admin', 'achievement.delete', deleteTarget.name);
-    setDeleting(false);
-    setDeleteTarget(null);
-    await load();
+    try {
+      await achievementService.deleteAchievement(deleteTarget.id);
+      await adminService.logAction(currentUser?.username || 'admin', 'achievement.delete', deleteTarget.name);
+      toast.success('Achievement deleted.');
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      toast.error(err?.message || 'Could not delete the achievement.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const toggleActive = async (a) => {
-    const next = await achievementService.setActive(a.id, !a.active);
-    setItems(prev => prev.map(x => (x.id === a.id ? next : x)));
+    try {
+      // Update the row only after the backend confirms, so a failed request
+      // never leaves the table showing a status the server did not accept.
+      const next = await achievementService.setActive(a.id, !a.active);
+      setItems(prev => prev.map(x => (x.id === a.id ? next : x)));
+      toast.success(next.active ? 'Achievement is live.' : 'Achievement hidden from players.');
+    } catch (err) {
+      toast.error(err?.message || 'Could not change the achievement status.');
+    }
   };
 
-  const setMetric = (metric) => {
-    const meta = metricMeta(metric);
+  const setCriteriaType = (criteriaType) => {
+    const meta = criteriaMeta(criteriaType);
     setDraft(d => ({
       ...d,
-      criteria: {
-        ...d.criteria,
-        metric,
-        category: meta.needs === 'category' ? (d.criteria.category || categories[0].name) : null,
-        difficulty: meta.needs === 'difficulty' ? (d.criteria.difficulty || DIFFICULTIES[0]) : null,
-      },
+      criteriaType,
+      categoryRef: meta.needs === 'category'
+        ? (d.categoryRef || categories[0]?.id || '')
+        : d.categoryRef,
+      challengeRef: meta.needs === 'challenge'
+        ? (d.challengeRef || challengeList[0]?.id || '')
+        : d.challengeRef,
     }));
   };
 
@@ -129,7 +243,7 @@ export default function AdminAchievements() {
   const totalReward = items.reduce((s, a) => s + (a.reward || 0), 0);
 
   const statCards = [
-    { icon: Award, value: items.length, label: 'Custom Achievements', color: 'var(--accent-cyan)' },
+    { icon: Award, value: items.length, label: 'Achievements', color: 'var(--accent-cyan)' },
     { icon: Sparkles, value: activeCount, label: 'Live For Players', color: 'var(--accent-green)' },
     { icon: Gem, value: totalReward.toLocaleString(), label: 'Total Reward Pool', color: 'var(--accent-purple)' },
   ];
@@ -141,6 +255,21 @@ export default function AdminAchievements() {
       </div>
     );
   }
+
+  if (error && items.length === 0) {
+    return (
+      <div className="page-container">
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '60px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--accent-red)', fontFamily: 'var(--font-mono)', margin: '0 0 16px' }}>{error}</p>
+          <button className="btn btn-primary d-flex align-items-center gap-2" style={{ margin: '0 auto' }} onClick={load}>
+            <RotateCcw size={15} /> Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const ruleError = fieldErrors.criteria_config || fieldErrors.criteria_type || fieldErrors.criteriaType;
 
   return (
     <div className="page-container">
@@ -194,7 +323,7 @@ export default function AdminAchievements() {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                    {items.length === 0 ? 'No custom achievements yet. Create your first badge.' : 'No achievements found'}
+                    {items.length === 0 ? 'No achievements yet. Create your first badge.' : 'No achievements found'}
                   </td>
                 </tr>
               ) : (
@@ -203,7 +332,7 @@ export default function AdminAchievements() {
                     <td>
                       <div className="d-flex align-items-center gap-3">
                         <div style={{ flexShrink: 0 }}>
-                          <AchievementBadge icon={resolveIcon(a.icon)} gradient={a.gradient} glow={`${a.gradient[0]}66`} locked={!a.active} size={30} />
+                          <AchievementBadge icon={resolveIcon(a.icon)} image={a.image} gradient={a.gradient} glow={`${a.gradient[0]}66`} locked={!a.active} size={30} />
                         </div>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{a.name}</div>
@@ -215,9 +344,12 @@ export default function AdminAchievements() {
                     </td>
                     <td>
                       <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
-                        {describeCriteria(a.criteria)}
+                        {a.criteriaLabel || describeRule(a.criteriaType, a.criteriaConfig, lookups)}
                       </div>
                       <span className="cat-chip" style={{ fontSize: '0.66rem', marginTop: 3, display: 'inline-block' }}>{a.category}</span>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                        {a.earnedCount} earned
+                      </div>
                     </td>
                     <td>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-green)' }}>
@@ -252,7 +384,12 @@ export default function AdminAchievements() {
                         <button onClick={() => openEdit(a)} style={{ background: 'rgba(61,221,208,0.1)', border: '1px solid rgba(61,221,208,0.28)', color: 'var(--accent-cyan)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex' }} title="Edit">
                           <Pencil size={14} />
                         </button>
-                        <button onClick={() => setDeleteTarget(a)} style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.28)', color: 'var(--accent-red)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex' }} title="Delete">
+                        <button
+                          onClick={() => setDeleteTarget(a)}
+                          disabled={a.earnedCount > 0}
+                          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.28)', color: 'var(--accent-red)', borderRadius: 6, padding: '4px 8px', cursor: a.earnedCount > 0 ? 'not-allowed' : 'pointer', opacity: a.earnedCount > 0 ? 0.45 : 1, display: 'flex' }}
+                          title={a.earnedCount > 0 ? 'Earned achievements cannot be deleted — deactivate instead' : 'Delete'}
+                        >
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -285,14 +422,14 @@ export default function AdminAchievements() {
           display: 'flex', alignItems: 'center', gap: 16, padding: 16, marginBottom: 20,
           background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12,
         }}>
-          <AchievementBadge icon={resolveIcon(draft.icon)} gradient={draft.gradient} glow={`${draft.gradient[0]}66`} size={54} />
+          <AchievementBadge icon={resolveIcon(draft.icon)} image={draft.image} gradient={draft.gradient} glow={`${draft.gradient[0]}66`} size={54} />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>{draft.name || 'Untitled Achievement'}</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: 3 }}>
               {draft.description || 'Add a description players will read on their badge.'}
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.66rem', color: 'var(--accent-green)', marginTop: 6 }}>
-              Reward +{draft.reward || 0} pts · {describeCriteria(draft.criteria)}
+              Reward +{draft.reward || 0} pts · {describeRule(draft.criteriaType, buildConfig(draft), lookups)}
             </div>
           </div>
         </div>
@@ -302,6 +439,7 @@ export default function AdminAchievements() {
             <label className="form-label">Name</label>
             <input className="form-control" placeholder="e.g. Night Owl" value={draft.name}
               onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
+            {fieldErrors.name && <div style={{ color: 'var(--accent-red)', fontSize: '0.72rem', marginTop: 4 }}>{fieldErrors.name}</div>}
           </div>
           <div className="col-md-4">
             <label className="form-label">Category</label>
@@ -322,35 +460,47 @@ export default function AdminAchievements() {
             <label className="form-label">Unlock Rule</label>
             <div className="row g-2">
               <div className="col-md-5">
-                <select className="form-select" value={draft.criteria.metric} onChange={e => setMetric(e.target.value)}>
-                  {CRITERIA_METRICS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                <select className="form-select" value={draft.criteriaType} onChange={e => setCriteriaType(e.target.value)}>
+                  {CRITERIA_TYPES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
               </div>
-              {metricMeta(draft.criteria.metric).needs === 'category' && (
+              {criteriaMeta(draft.criteriaType).needs === 'category' && (
                 <div className="col-md-4">
-                  <select className="form-select" value={draft.criteria.category || ''}
-                    onChange={e => setDraft(d => ({ ...d, criteria: { ...d.criteria, category: e.target.value } }))}>
-                    {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  <select className="form-select" value={draft.categoryRef}
+                    onChange={e => setDraft(d => ({ ...d, categoryRef: e.target.value }))}>
+                    {categories.length === 0 && <option value="">No categories loaded</option>}
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
               )}
-              {metricMeta(draft.criteria.metric).needs === 'difficulty' && (
+              {criteriaMeta(draft.criteriaType).needs === 'challenge' && (
                 <div className="col-md-4">
-                  <select className="form-select" value={draft.criteria.difficulty || ''}
-                    onChange={e => setDraft(d => ({ ...d, criteria: { ...d.criteria, difficulty: e.target.value } }))}>
-                    {DIFFICULTIES.map(x => <option key={x} value={x}>{x}</option>)}
+                  <select className="form-select" value={draft.challengeRef}
+                    onChange={e => setDraft(d => ({ ...d, challengeRef: e.target.value }))}>
+                    {challengeList.length === 0 && <option value="">No challenges loaded</option>}
+                    {challengeList.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                   </select>
                 </div>
               )}
-              <div className="col-md-3">
-                <input className="form-control" type="number" min={1} placeholder="Threshold"
-                  value={draft.criteria.threshold}
-                  onChange={e => setDraft(d => ({ ...d, criteria: { ...d.criteria, threshold: e.target.value } }))} />
-              </div>
+              {criteriaMeta(draft.criteriaType).needs === 'target' && (
+                <div className="col-md-3">
+                  <input className="form-control" type="number" min={1} placeholder="Target"
+                    value={draft.target}
+                    onChange={e => setDraft(d => ({ ...d, target: e.target.value }))} />
+                </div>
+              )}
+              {criteriaMeta(draft.criteriaType).needs === 'category' && (
+                <div className="col-md-3">
+                  <input className="form-control" type="number" min={1} placeholder="Target"
+                    value={draft.target}
+                    onChange={e => setDraft(d => ({ ...d, target: e.target.value }))} />
+                </div>
+              )}
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 6 }}>
-              Unlocks at {describeCriteria(draft.criteria)}.
+              Unlocks at {describeRule(draft.criteriaType, buildConfig(draft), lookups)}.
             </div>
+            {ruleError && <div style={{ color: 'var(--accent-red)', fontSize: '0.72rem', marginTop: 4 }}>{ruleError}</div>}
           </div>
 
           {/* Icon picker */}
@@ -406,6 +556,7 @@ export default function AdminAchievements() {
               <input type="color" className="form-control form-control-color" value={draft.gradient[1]} aria-label="Gradient end"
                 onChange={e => setDraft(d => ({ ...d, gradient: [d.gradient[0], e.target.value] }))} />
             </div>
+            {fieldErrors.gradient && <div style={{ color: 'var(--accent-red)', fontSize: '0.72rem', marginTop: 4 }}>{fieldErrors.gradient}</div>}
           </div>
 
           <div className="col-md-4">
@@ -436,17 +587,26 @@ export default function AdminAchievements() {
         footer={
           <>
             <button className="btn btn-outline-secondary" onClick={() => setDeleteTarget(null)}>Cancel</button>
-            <button className="btn btn-danger d-flex align-items-center gap-2" onClick={remove} disabled={deleting}>
+            <button className="btn btn-danger d-flex align-items-center gap-2" onClick={remove} disabled={deleting || deleteTarget?.earnedCount > 0}>
               {deleting ? <span className="spinner-border spinner-border-sm" /> : <><Trash2 size={14} /> Delete</>}
             </button>
           </>
         }
       >
-        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-          Are you sure you want to permanently remove{' '}
-          <strong style={{ color: 'var(--text-primary)' }}>&quot;{deleteTarget?.name}&quot;</strong>?{' '}
-          Anyone who already unlocked it will lose the badge.
-        </p>
+        {deleteTarget?.earnedCount > 0 ? (
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            <strong style={{ color: 'var(--text-primary)' }}>&quot;{deleteTarget?.name}&quot;</strong>{' '}
+            has already been earned by {deleteTarget.earnedCount} player{deleteTarget.earnedCount === 1 ? '' : 's'} and
+            can no longer be deleted.{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>Deactivate</strong> it instead to hide it from players.
+          </p>
+        ) : (
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            Remove{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>&quot;{deleteTarget?.name}&quot;</strong>{' '}
+            from the board? This hides the definition; no player has earned it yet.
+          </p>
+        )}
       </Modal>
     </div>
   );

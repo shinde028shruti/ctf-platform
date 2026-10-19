@@ -235,7 +235,9 @@ async function request(path, options = {}) {
     signal
   } = options;
   const headers = { Accept: "application/json" };
-  if (body !== void 0) headers["Content-Type"] = "application/json";
+  if (body !== void 0 && !(body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
   if (auth && tokenStore.getAccess()) {
     headers.Authorization = `Bearer ${tokenStore.getAccess()}`;
   }
@@ -245,7 +247,7 @@ async function request(path, options = {}) {
       method,
       headers,
       signal,
-      body: body === void 0 ? void 0 : JSON.stringify(body)
+      body: body === void 0 ? void 0 : body instanceof FormData ? body : JSON.stringify(body)
     });
   } catch {
     throw new ApiError("Cannot reach the server. Is the backend running?", { status: 0 });
@@ -436,6 +438,17 @@ var init_adminService = __esm({
       },
       async listGroups() {
         return api.get("/admin/groups/");
+      },
+      /**
+       * Platform-wide Dashboard/Analytics aggregates. Admin only.
+       * GET /api/v1/admin/analytics/
+       *
+       * Every figure is derived server-side from real Solve / Submission / User
+       * records. There is no mock fallback: a failure propagates as ApiError so the
+       * pages can show an error state instead of stale numbers.
+       */
+      async getAdminAnalytics() {
+        return api.get("/admin/analytics/");
       }
     };
   }

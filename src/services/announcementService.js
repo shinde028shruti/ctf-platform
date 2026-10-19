@@ -1,123 +1,225 @@
 /**
  * announcementService.js
- * Handles platform-wide announcements broadcast by admins.
- * TODO: Replace with real API calls when backend is ready.
+ *
+ * Talks to the real announcement API. The public banner reads
+ * `GET /announcements/` (active published announcements only); the admin page
+ * reads and mutates `/admin/announcements/`.
+ *
+ * The backend speaks snake_case and a `status` of `draft`/`published`; the
+ * existing UI speaks camelCase (`showFrom`/`showUntil`/`createdAt`) and a
+ * boolean `active`. The two `to*` mappers below are the only place that
+ * translation happens, so neither component had to be reshaped.
+ *
+ * There is deliberately no mock/seed fallback: a failed request rejects, and
+ * the caller decides what (if anything) to show.
+ *
+ * Dismissals are *not* announcement data. They are a per-account presentation
+ * preference kept in the browser (localStorage, scoped per account) - the server
+ * is never asked to remember them, and one account's dismissals never hide a
+ * banner from anybody else.
  */
 
-const ANNOUNCE_KEY = 'cyberforge_announcements';
+import { api } from './api';
+
 const USER_KEY = 'cyberforge_user';
-const delay = (ms = 250) => new Promise(res => setTimeout(res, ms));
+const DISMISS_PREFIX = 'cyberforge_announcements_dismissed';
 
-const SEED = [
-  {
-    id: 1,
-    title: 'Welcome to FlagHunt',
-    body: 'Solve challenges, climb the ranks, and keep your streak alive. Good hunting, operator.',
-    priority: 'info',
-    active: true,
-    showFrom: null,
-    showUntil: null,
-    createdAt: '2026-09-15 09:00:00',
-  },
-];
-
-const read = (key, fallback) => {
-  const raw = localStorage.getItem(key);
-  if (raw) {
-    try { return JSON.parse(raw); } catch { /* fall through */ }
-  }
-  return fallback;
-};
-
-const write = (key, data) => localStorage.setItem(key, JSON.stringify(data));
+/* ------------------------------------------------------------------ */
+/* Dismissals (client-only presentation state)                         */
+/* ------------------------------------------------------------------ */
 
 /**
- * Dismissals are session-only: stored in memory for the lifetime of the page.
- * Reloading the page or logging out and back in will always show banners again.
- * Keyed by user scope so switching accounts in one tab cannot leak dismissals.
+ * A dismissal is a presentation preference, not announcement data: it is kept
+ * in the browser only, never sent to the server, and never affects what other
+ * accounts see. It is scoped per account (`u:<id>`), so switching accounts in
+ * one browser cannot inherit someone else's dismissals, and it lives in
+ * localStorage so a reload does not resurrect a banner the user closed. An
+ * in-memory mirror means a blocked or full localStorage still lets the current
+ * page dismiss banners.
  */
-const sessionDismissed = new Map();
-const sessionFor = (scope) => {
-  if (!sessionDismissed.has(scope)) sessionDismissed.set(scope, new Set());
-  return sessionDismissed.get(scope);
-};
+const memoryDismissed = new Map();
 
-/** Who is dismissing. A signed-out visitor gets their own scope so two people
- *  sharing a browser tab cannot inherit each other's dismissals. */
+/** Who is dismissing. A signed-out visitor gets a shared 'guest' scope. */
 const currentScope = () => {
   try {
-    const u = read(USER_KEY, null);
-    if (u) return `u:${u.id ?? u.username ?? 'me'}`;
-  } catch { /* fall through */ }
+    const raw = localStorage.getItem(USER_KEY);
+    if (raw) {
+      const u = JSON.parse(raw);
+      if (u) return `u:${u.id ?? u.username ?? 'me'}`;
+    }
+  } catch { /* fall through to guest */ }
   return 'guest';
 };
 
+const storageKey = (scope) => `${DISMISS_PREFIX}:${scope}`;
+
+const readStored = (scope) => {
+  try {
+    const raw = localStorage.getItem(storageKey(scope));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeStored = (scope, ids) => {
+  try {
+    localStorage.setItem(storageKey(scope), JSON.stringify([...ids]));
+  } catch { /* a blocked or full localStorage must not break dismissing */ }
+};
+
+const dismissedFor = (scope) => {
+  if (!memoryDismissed.has(scope)) {
+    memoryDismissed.set(scope, new Set(readStored(scope)));
+  }
+  return memoryDismissed.get(scope);
+};
+
+/* ------------------------------------------------------------------ */
+/* Normalisation                                                       */
+/* ------------------------------------------------------------------ */
+
+const pad = (n) => String(n).padStart(2, '0');
+
+/** ISO timestamp -> the `YYYY-MM-DDTHH:MM` shape a datetime-local input wants. */
+const toLocalInput = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  );
+};
+
+/** ISO timestamp -> the `YYYY-MM-DD HH:MM:SS` shape the table renders. */
+const toLocalStamp = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  );
+};
+
+/** `datetime-local` value (local wall time) -> an aware ISO string for the API. */
+const toIso = (value) => {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+};
+
+const asArray = (data) =>
+  Array.isArray(data) ? data : (data?.results ?? []);
+
+/** Wire shape (public) -> the banner's model. */
+const toPublic = (a) => ({
+  id: a.id,
+  title: a.title,
+  body: a.body || '',
+  priority: a.priority || 'info',
+  // The public endpoint only ever returns active rows.
+  active: true,
+  showFrom: toLocalInput(a.starts_at),
+  showUntil: toLocalInput(a.ends_at),
+  createdAt: toLocalStamp(a.published_at || a.created_at),
+});
+
+/** Wire shape (admin) -> the admin table/form model. */
+const toAdmin = (a) => ({
+  id: a.id,
+  title: a.title,
+  body: a.body || '',
+  priority: a.priority || 'info',
+  status: a.status,
+  active: a.status === 'published',
+  showFrom: toLocalInput(a.starts_at),
+  showUntil: toLocalInput(a.ends_at),
+  createdAt: toLocalStamp(a.created_at),
+  createdBy: a.created_by_username || null,
+});
+
+/** UI payload -> the writable wire fields. Only provided keys are sent, so a
+ *  `PATCH` never clobbers an omitted field. */
+const toPayload = (data = {}) => {
+  const payload = {};
+  if ('title' in data) payload.title = data.title;
+  if ('body' in data) payload.body = data.body;
+  if ('priority' in data) payload.priority = data.priority;
+  if ('status' in data) payload.status = data.status;
+  // The UI toggles a boolean; translate it unless an explicit status was given.
+  if ('active' in data && !('status' in data)) {
+    payload.status = data.active ? 'published' : 'draft';
+  }
+  if ('showFrom' in data) payload.starts_at = toIso(data.showFrom);
+  if ('showUntil' in data) payload.ends_at = toIso(data.showUntil);
+  return payload;
+};
+
+/* ------------------------------------------------------------------ */
+/* Public API                                                          */
+/* ------------------------------------------------------------------ */
+
 export const announcementService = {
-  async getAnnouncements() {
-    await delay();
-    return read(ANNOUNCE_KEY, SEED);
+  /** Active published announcements, for the banner. Readable anonymously. */
+  async getActiveAnnouncements() {
+    const data = await api.get('/announcements/', { auth: false });
+    return asArray(data).map(toPublic);
   },
 
-  async getActiveAnnouncements() {
-    await delay(100);
-    const now = Date.now();
-    return read(ANNOUNCE_KEY, SEED).filter(a => {
-      if (!a.active) return false;
-      if (a.showFrom && new Date(a.showFrom).getTime() > now) return false;
-      if (a.showUntil && new Date(a.showUntil).getTime() < now) return false;
-      return true;
-    });
+  /** Every announcement (drafts included), for the admin table. */
+  async getAnnouncements() {
+    const data = await api.get('/admin/announcements/');
+    return asArray(data).map(toAdmin);
   },
 
   async createAnnouncement(data) {
-    await delay();
-    const items = read(ANNOUNCE_KEY, SEED);
-    const item = {
-      id: Date.now(),
-      createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
-      ...data,
-    };
-    write(ANNOUNCE_KEY, [item, ...items]);
-    return item;
+    const created = await api.post('/admin/announcements/', toPayload(data));
+    return toAdmin(created);
   },
 
   async updateAnnouncement(id, data) {
-    await delay();
-    const items = read(ANNOUNCE_KEY, SEED);
-    const index = items.findIndex(a => a.id === Number(id));
-    if (index === -1) throw new Error('Announcement not found.');
-    items[index] = { ...items[index], ...data };
-    write(ANNOUNCE_KEY, items);
-    return items[index];
+    const updated = await api.patch(
+      `/admin/announcements/${id}/`,
+      toPayload(data),
+    );
+    return toAdmin(updated);
   },
 
   async deleteAnnouncement(id) {
-    await delay();
-    write(ANNOUNCE_KEY, read(ANNOUNCE_KEY, SEED).filter(a => a.id !== Number(id)));
+    await api.delete(`/admin/announcements/${id}/`);
     return { success: true };
   },
 
-  /** Returns the set of announcement IDs dismissed in this session only.
-   *  Always empty on a fresh page load or after logging out and back in. */
+  /** Announcement IDs this account has dismissed (browser-local, never sent to
+   *  the server and never visible to any other account). */
   getDismissed() {
-    return new Set(sessionFor(currentScope()));
+    return new Set(dismissedFor(currentScope()));
   },
 
-  /** Records a dismissal in memory for the rest of this page session.
-   *  The banner will reappear after a reload or a fresh login. */
+  /** Records a dismissal for the current account and persists it locally. */
   dismiss(id) {
-    sessionFor(currentScope()).add(String(id));
+    const scope = currentScope();
+    const set = dismissedFor(scope);
+    set.add(String(id));
+    writeStored(scope, set);
   },
 
   dismissAll(ids) {
-    (ids || []).forEach(id => this.dismiss(id));
+    const scope = currentScope();
+    const set = dismissedFor(scope);
+    (ids || []).forEach((id) => set.add(String(id)));
+    writeStored(scope, set);
   },
 
-  /** Clears this session's dismissals so active banners reappear immediately —
+  /** Clears this account's dismissals so active banners reappear immediately -
    *  lets an admin verify their own broadcast without re-creating it. */
-  async resetDismissals() {
-    await delay(200);
-    sessionDismissed.delete(currentScope());
+  resetDismissals() {
+    const scope = currentScope();
+    memoryDismissed.delete(scope);
+    try { localStorage.removeItem(storageKey(scope)); } catch { /* ignore */ }
     return { success: true };
   },
 };

@@ -18,13 +18,21 @@ export default function AnnouncementBanner() {
   useEffect(() => {
     let alive = true;
     const load = async () => {
-      const all = await announcementService.getActiveAnnouncements();
-      if (!alive) return;
-      const dismissed = announcementService.getDismissed();
-      setAnnouncements(all.filter(a => !dismissed.has(String(a.id))));
+      try {
+        const all = await announcementService.getActiveAnnouncements();
+        if (!alive) return;
+        const dismissed = announcementService.getDismissed();
+        setAnnouncements(all.filter(a => !dismissed.has(String(a.id))));
+      } catch {
+        // A failed fetch must never fabricate content. Keep whatever real
+        // announcements are already shown and retry on the next tick. The
+        // `alive` guard above stops a late response from updating an unmounted
+        // (or logged-out) banner.
+      }
     };
     load();
-    const iv = setInterval(load, 60000);
+    // Low-churn data: poll every five minutes rather than every minute.
+    const iv = setInterval(load, 300000);
     return () => { alive = false; clearInterval(iv); };
   }, []);
 
@@ -52,7 +60,7 @@ export default function AnnouncementBanner() {
 
   // Drop from state first so the bar disappears on click, then persist. The
   // service also keeps an in-memory copy, so a blocked localStorage cannot
-  // resurrect the banner on the next 60s refresh.
+  // resurrect the banner on the next refresh.
   const dismiss = (a) => {
     setAnnouncements(prev => prev.filter(x => x.id !== a.id));
     announcementService.dismiss(a.id);

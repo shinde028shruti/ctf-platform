@@ -59,12 +59,14 @@ function YourRankCard({ user }) {
       </div>
 
       <div className="lb-you-avatar">
-        {user.username[0].toUpperCase()}
+        {user.avatar
+          ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : user.username[0].toUpperCase()}
       </div>
 
       <div className="lb-you-stat">
         <div className="lb-you-stat-label">Player</div>
-        <div className="lb-you-stat-value" style={{ color: 'var(--accent-green)' }}>{user.username}</div>
+        <div className="lb-you-stat-value" style={{ color: 'var(--accent-green)' }}>{user.displayName || user.username}</div>
       </div>
       <div className="lb-you-stat">
         <div className="lb-you-stat-label">Rank</div>

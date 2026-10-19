@@ -1,14 +1,22 @@
 /**
  * achievementService.js
- * Achievements authored from the admin panel. Uses the same localStorage mock
- * backend as the other services (TODO: swap for real API calls).
  *
- * A built-in achievement (data/achievements.js) unlocks through a `check(user,
- * solvedIds)` function. A function cannot be written to storage, typed into a
- * form or edited later, so a custom achievement stores a serialized rule instead
- * — `criteria = { metric, threshold, category?, difficulty? }` — and evaluate()
- * interprets it against a user at render time. Rule data survives a reload and
- * can be changed by an admin without touching code.
+ * The achievement board and its administration, backed by the Django REST API.
+ * There is deliberately NO mock / localStorage fallback: if a request fails the
+ * caller shows an error rather than inventing an award. Award state is owned by
+ * the server and is never written from the browser.
+ *
+ * Two read surfaces:
+ *   - `getActiveAchievements()` -> GET /achievements/  (the caller's own board:
+ *     active definitions plus anything they have already earned, each with a
+ *     server-computed `earned` flag and `progress`).
+ *   - `getAchievements()`       -> GET /admin/achievements/  (every definition,
+ *     drafts included, for the admin table).
+ *
+ * The backend speaks snake_case and the four supported criteria types
+ * (`first_solve`, `total_solves`, `category_solves`, `challenge_solved`); the
+ * existing UI speaks camelCase. The `to*` mappers below are the only place that
+ * translation happens, so the pages stay presentation-only.
  */
 
 import {
@@ -16,23 +24,14 @@ import {
   Image as ImageIcon, Smartphone, Puzzle, Flame, Trophy, Target, Medal, Award,
   Star, Swords, Ghost, Lock, Radar, Rocket, Crown, Gem, Code, Network, Hexagon,
 } from 'lucide-react';
-import { challenges } from '../data/challenges';
 
-const KEY = 'cyberforge_achievements';
-const delay = (ms = 250) => new Promise(res => setTimeout(res, ms));
+import { api } from './api';
 
-const read = (key, fallback) => {
-  const raw = localStorage.getItem(key);
-  if (raw) {
-    try { return JSON.parse(raw); } catch { /* fall through */ }
-  }
-  return fallback;
-};
+/* ------------------------------------------------------------------ */
+/* Icon options for the admin picker                                   */
+/* ------------------------------------------------------------------ */
 
-const write = (key, data) => localStorage.setItem(key, JSON.stringify(data));
-
-/* ── Icon options for the admin picker ───────────────────────────
-   Stored by name so the record stays JSON-safe; ICONS resolves it back to a
+/* Stored by name so the record stays JSON-safe; ICONS resolves it back to a
    component. Anything unrecognised falls back to Trophy rather than crashing a
    whole grid over one bad record. */
 export const ICONS = {
@@ -47,23 +46,13 @@ export function resolveIcon(name) {
   return ICONS[name] || Trophy;
 }
 
-/* ── Criteria vocabulary ────────────────────────────────────────
-   `needs` drives which extra field the admin form shows, so the form can never
-   collect a category for a metric that ignores it. */
-export const CRITERIA_METRICS = [
-  { value: 'solved_total',      label: 'Challenges solved',     unit: 'challenges' },
-  { value: 'points',            label: 'Total points earned',   unit: 'points' },
-  { value: 'streak',            label: 'Current streak',        unit: 'days' },
-  { value: 'category_solved',   label: 'Solved in a category',  unit: 'challenges', needs: 'category' },
-  { value: 'difficulty_solved', label: 'Solved at a difficulty', unit: 'challenges', needs: 'difficulty' },
-];
-
-export const DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Insane'];
+/* ------------------------------------------------------------------ */
+/* Presentation vocabulary                                             */
+/* ------------------------------------------------------------------ */
 
 export const RARITIES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
 
-/** Curated two-stop gradients offered as one-click presets in the admin form.
- *  Admin-authored colours are free-form, so these are only a starting point. */
+/** Curated two-stop gradients offered as one-click presets in the admin form. */
 export const GRADIENT_PRESETS = [
   ['#4F1F71', '#7764E0'],
   ['#22d3ee', '#a855f7'],
@@ -79,126 +68,170 @@ export const GRADIENT_PRESETS = [
   ['#61dafb', '#a78bfa'],
 ];
 
-export const metricMeta = (value) =>
-  CRITERIA_METRICS.find(m => m.value === value) || CRITERIA_METRICS[0];
+/* ------------------------------------------------------------------ */
+/* Criteria vocabulary — exactly the four server-supported types       */
+/* ------------------------------------------------------------------ */
 
-/** Count solved challenges at one difficulty. `solvedIds` is the user's
- *  `solvedChallenges` array; anything not in the challenge list is ignored. */
-function solvedAtDifficulty(user, solvedIds, difficulty) {
-  const done = new Set((solvedIds || []).map(Number));
-  return challenges.filter(c => c.difficulty === difficulty && done.has(Number(c.id))).length;
-}
+/* `needs` drives which extra field the admin form shows, so the form can never
+   collect data a rule ignores. The values match `achievements.criteria` on the
+   backend and nothing else is offered. */
+export const CRITERIA_TYPES = [
+  { value: 'first_solve',      label: 'Solve the first challenge',      needs: null },
+  { value: 'total_solves',     label: 'Solve a number of challenges',   needs: 'target' },
+  { value: 'category_solves',  label: 'Solve challenges in a category', needs: 'category' },
+  { value: 'challenge_solved', label: 'Solve a specific challenge',     needs: 'challenge' },
+];
+
+export const criteriaMeta = (value) =>
+  CRITERIA_TYPES.find((c) => c.value === value) || CRITERIA_TYPES[0];
 
 /**
- * Resolve a rule against a user.
- * Returns the numbers as well as the verdict so the UI can show "4 / 10" on a
- * locked achievement instead of a bare silhouette.
+ * Client-side summary of a rule for the admin form's live preview. The server
+ * also returns a `criteria_label`; this exists so the text updates while the
+ * admin is still typing, before anything is saved.
+ *
+ * `lookups` supplies `{ categoryNames, challengeTitles }` (id -> name) loaded
+ * from the real category/challenge APIs.
  */
-export function evaluate(criteria, user) {
-  const c = criteria || {};
-  const threshold = Math.max(1, Number(c.threshold) || 1);
-  if (!user) return { earned: false, gained: 0, target: threshold };
+export function describeRule(criteriaType, config = {}, lookups = {}) {
+  const categoryNames = lookups.categoryNames || {};
+  const challengeTitles = lookups.challengeTitles || {};
+  const target = Math.max(1, Number(config.target) || 1);
 
-  const solvedIds = user.solvedChallenges || [];
-  let gained = 0;
-
-  switch (c.metric) {
-    case 'points':
-      gained = Number(user.points) || 0;
-      break;
-    case 'streak':
-      gained = Number(user.streak) || 0;
-      break;
-    case 'category_solved':
-      gained = Number(user.categoryStats?.[c.category]?.solved) || 0;
-      break;
-    case 'difficulty_solved':
-      gained = solvedAtDifficulty(user, solvedIds, c.difficulty);
-      break;
-    case 'solved_total':
+  switch (criteriaType) {
+    case 'total_solves':
+      return `Solve ${target} challenge${target === 1 ? '' : 's'}`;
+    case 'category_solves':
+      return `Solve ${target} in ${categoryNames[config.category] || 'a category'}`;
+    case 'challenge_solved':
+      return challengeTitles[config.challenge]
+        ? `Solve "${challengeTitles[config.challenge]}"`
+        : 'Solve a specific challenge';
+    case 'first_solve':
     default:
-      gained = solvedIds.length;
-      break;
+      return 'Solve your first challenge';
   }
-
-  return { earned: gained >= threshold, gained, target: threshold };
 }
 
-/** One-line human summary of a rule, for the admin table and the card footer. */
-export function describeCriteria(criteria) {
-  const c = criteria || {};
-  const meta = metricMeta(c.metric);
-  const threshold = Math.max(1, Number(c.threshold) || 1);
-  const target = `${threshold.toLocaleString()} ${meta.unit}${threshold === 1 ? '' : 's'}`;
-  if (c.metric === 'category_solved') return `${target} in ${c.category || 'any category'}`;
-  if (c.metric === 'difficulty_solved') return `${target} at ${c.difficulty || 'any difficulty'}`;
-  return target;
-}
+/* ------------------------------------------------------------------ */
+/* Normalisation                                                       */
+/* ------------------------------------------------------------------ */
 
-const sanitize = (data) => {
-  const gradient = Array.isArray(data.gradient) && data.gradient.length === 2
-    ? data.gradient
-    : GRADIENT_PRESETS[0];
-  return {
-    name: String(data.name || 'Untitled Achievement').trim(),
-    description: String(data.description || '').trim(),
-    category: data.category || 'General',
-    icon: ICONS[data.icon] ? data.icon : 'Trophy',
-    gradient,
-    rarity: RARITIES.includes(data.rarity) ? data.rarity : 'Common',
-    reward: Math.max(0, Number(data.reward) || 0),
-    active: data.active !== false,
-    criteria: {
-      metric: CRITERIA_METRICS.some(m => m.value === data.criteria?.metric)
-        ? data.criteria.metric
-        : 'solved_total',
-      threshold: Math.max(1, Number(data.criteria?.threshold) || 1),
-      category: data.criteria?.category || null,
-      difficulty: DIFFICULTIES.includes(data.criteria?.difficulty) ? data.criteria.difficulty : null,
-    },
-  };
+const asArray = (data) => (Array.isArray(data) ? data : (data?.results ?? []));
+
+const safeGradient = (value) =>
+  Array.isArray(value) && value.length === 2 ? value : GRADIENT_PRESETS[0];
+
+/** Wire shape (admin) -> the admin table/form model. */
+const toAdmin = (a) => ({
+  id: a.id,
+  slug: a.slug,
+  name: a.name,
+  description: a.description || '',
+  category: a.category || 'General',
+  icon: ICONS[a.icon] ? a.icon : 'Trophy',
+  gradient: safeGradient(a.gradient),
+  image: a.badge_image || '',
+  rarity: RARITIES.includes(a.rarity) ? a.rarity : 'Common',
+  reward: Number(a.reward) || 0,
+  active: a.is_active !== false,
+  sortOrder: Number(a.sort_order) || 0,
+  criteriaType: a.criteria_type,
+  criteriaConfig: a.criteria_config || {},
+  criteriaLabel: a.criteria_label || '',
+  earnedCount: Number(a.earned_count) || 0,
+  createdAt: a.created_at || null,
+  updatedAt: a.updated_at || null,
+});
+
+/** Wire shape (player board) -> the card model. Award state is server-owned. */
+const toUser = (a) => ({
+  id: a.id,
+  slug: a.slug,
+  name: a.name,
+  description: a.description || '',
+  category: a.category || 'General',
+  icon: ICONS[a.icon] ? a.icon : 'Trophy',
+  gradient: safeGradient(a.gradient),
+  image: a.badge_image || '',
+  rarity: RARITIES.includes(a.rarity) ? a.rarity : 'Common',
+  reward: Number(a.reward) || 0,
+  criteriaType: a.criteria_type,
+  criteriaLabel: a.criteria_label || '',
+  earned: Boolean(a.earned),
+  unlockedAt: a.unlocked_at || null,
+  progress: {
+    gained: Number(a.progress?.gained) || 0,
+    target: Math.max(1, Number(a.progress?.target) || 1),
+  },
+});
+
+/** UI draft -> the writable wire fields. Only provided keys are sent, so a
+ *  PATCH never clobbers an omitted field. `slug` is never sent: the server
+ *  derives it. */
+const toPayload = (data = {}) => {
+  const payload = {};
+  if ('name' in data) payload.name = data.name;
+  if ('description' in data) payload.description = data.description;
+  if ('category' in data) payload.category = data.category;
+  if ('icon' in data) payload.icon = data.icon;
+  if ('gradient' in data) payload.gradient = data.gradient;
+  if ('image' in data) payload.badge_image = data.image;
+  if ('rarity' in data) payload.rarity = data.rarity;
+  if ('reward' in data) payload.reward = Math.max(0, Number(data.reward) || 0);
+  if ('active' in data) payload.is_active = Boolean(data.active);
+  if ('sortOrder' in data) payload.sort_order = Math.max(0, Number(data.sortOrder) || 0);
+  if ('criteriaType' in data) payload.criteria_type = data.criteriaType;
+  if ('criteriaConfig' in data) payload.criteria_config = data.criteriaConfig;
+  return payload;
 };
 
+/* ------------------------------------------------------------------ */
+/* Public API                                                          */
+/* ------------------------------------------------------------------ */
+
 export const achievementService = {
-  async getAchievements() {
-    await delay();
-    return read(KEY, []);
-  },
-
+  /**
+   * The caller's achievement board.
+   * GET /achievements/ — authenticated; `earned`, `unlocked_at` and `progress`
+   * are computed by the server from the caller's own solve history.
+   */
   async getActiveAchievements() {
-    await delay(150);
-    return read(KEY, []).filter(a => a.active);
+    const data = await api.get('/achievements/');
+    return asArray(data).map(toUser);
   },
 
+  /**
+   * Every definition (drafts included), for the admin table.
+   * GET /admin/achievements/ — requires the achievement model permissions.
+   */
+  async getAchievements() {
+    const data = await api.get('/admin/achievements/');
+    return asArray(data).map(toAdmin);
+  },
+
+  /** POST /admin/achievements/ — create. Rejects on validation errors. */
   async createAchievement(data) {
-    await delay();
-    const items = read(KEY, []);
-    const item = {
-      id: `ach_${Date.now()}`,
-      createdAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
-      ...sanitize(data),
-    };
-    write(KEY, [item, ...items]);
-    return item;
+    const created = await api.post('/admin/achievements/', toPayload(data));
+    return toAdmin(created);
   },
 
+  /** PATCH /admin/achievements/{id}/ — partial update. */
   async updateAchievement(id, data) {
-    await delay();
-    const items = read(KEY, []);
-    const index = items.findIndex(a => a.id === id);
-    if (index === -1) throw new Error('Achievement not found.');
-    items[index] = { ...items[index], ...sanitize({ ...items[index], ...data }) };
-    write(KEY, items);
-    return items[index];
+    const updated = await api.patch(`/admin/achievements/${id}/`, toPayload(data));
+    return toAdmin(updated);
   },
 
+  /** Toggle the visibility flag through the same validated PATCH. */
   async setActive(id, active) {
     return this.updateAchievement(id, { active });
   },
 
+  /** DELETE /admin/achievements/{id}/ — a soft delete server-side. */
   async deleteAchievement(id) {
-    await delay();
-    write(KEY, read(KEY, []).filter(a => a.id !== id));
+    await api.delete(`/admin/achievements/${id}/`);
     return { success: true };
   },
 };
+
+export default achievementService;

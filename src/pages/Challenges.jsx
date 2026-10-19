@@ -6,6 +6,7 @@ import ChallengeFilter from '../components/ui/ChallengeFilter';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { challengeService } from '../services/challengeService';
 import { useApp } from '../context/AppContext';
+import { resolveFocusAreas } from '../utils/focusAreas';
 
 export default function Challenges() {
   const { user, updateUser } = useApp();
@@ -24,7 +25,9 @@ export default function Challenges() {
   });
 
   const userType = user?.userType;
-  const focusAreas = user?.onboarding?.focusAreas || [];
+  // Stable reference (shared empty array when the account has no preferences),
+  // so `focusAreas` below does not change identity on every render.
+  const focusAreas = resolveFocusAreas(user);
 
   useEffect(() => {
     if (urlCategory) setFilters(f => ({ ...f, category: urlCategory }));
@@ -80,7 +83,11 @@ export default function Challenges() {
       list = interestMatches.sort((a, b) => diffOrder[a.difficulty] - diffOrder[b.difficulty] || b.points - a.points);
     }
 
-    setFiltered(list);
+    // Publish a new array only when the derived list actually changed, so a
+    // re-run with identical inputs cannot cause an extra render.
+    setFiltered(prev => (
+      prev.length === list.length && prev.every((c, i) => c === list[i]) ? prev : list
+    ));
   }, [allChallenges, filters, userType, focusAreas]);
 
   const diffOrder = { Easy: 0, Medium: 1, Hard: 2, Insane: 3 };

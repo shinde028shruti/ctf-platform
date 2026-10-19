@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Flag, Users, Plus, Eye, Layers, CheckCircle, FileText, Radio, ArrowRight, ShieldCheck, Activity, Download } from 'lucide-react';
+import { Flag, Users, Plus, Eye, Layers, CheckCircle, FileText, Radio, ArrowRight, ShieldCheck, Activity, Download, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { challengeService } from '../../services/challengeService';
 import { adminService } from '../../services/adminService';
@@ -24,85 +24,84 @@ const quickActions = [
   { to: '/challenges',           label: 'View Platform',     icon: Eye,     color: 'var(--accent-orange)' },
 ];
 
+/** ISO timestamp -> the `YYYY-MM-DD HH:MM:SS` shape the feed renders. */
+const formatStamp = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+  );
+};
+
 function AuditPreview() {
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      setLogs((await adminService.getAuditLogs()).slice(0, 6));
-      setLoading(false);
-    })();
-  }, []);
-
-  if (loading) {
-    return <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>Loading...</div>;
-  }
-
+  // There is no authoritative server-side audit-log source yet: the admin
+  // JSON-API writes are not recorded in django.contrib.admin's LogEntry, and
+  // the previous implementation read a client-side mock. Rather than present
+  // fabricated activity as real, the panel reports that it is unavailable.
   return (
     <div className="d-flex flex-column">
-      {logs.length === 0 ? (
-        <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>No activity yet.</div>
-      ) : (
-        logs.map(log => (
-          <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--border-color)' }}>
-            <div style={{
-              width: 24, height: 24, borderRadius: 7, flexShrink: 0,
-              background: 'rgba(139,92,246,0.12)', color: 'var(--accent-purple)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Activity size={13} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <span style={{ fontWeight: 700, color: 'var(--accent-green)' }}>{log.actor}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--text-muted)' }}> {log.action.replace('.', ' · ')} </span>
-                <span style={{ fontWeight: 600 }}>{log.target}</span>
-              </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.64rem', color: 'var(--text-muted)' }}>{log.timestamp} · {log.ip}</div>
-            </div>
-          </div>
-        ))
-      )}
+      <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+        Admin activity history isn’t available yet.
+      </div>
     </div>
   );
 }
 
 export default function AdminDashboard() {
   const { user } = useApp();
-  const greeting = useGreeting(user?.username);
+  const greeting = useGreeting(user?.displayName || user?.username);
   const [challenges, setChallenges] = useState([]);
-  const [solves, setSolves] = useState([]);
-  const [adminUsers, setAdminUsers] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      const [list, s, u] = await Promise.all([
+  const load = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [list, stats] = await Promise.all([
         challengeService.getAllChallenges(),
-        adminService.getSolvesHistory(),
-        adminService.getUsers(),
+        adminService.getAdminAnalytics(),
       ]);
-      setChallenges(list); setSolves(s); setAdminUsers(u); setLoading(false);
-    })();
-  }, []);
+      setChallenges(Array.isArray(list) ? list : []);
+      setAnalytics(stats);
+    } catch (err) {
+      setError(err?.message || 'Could not load dashboard data.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
 
   const published = challenges.filter(c => c.status === 'published').length;
   const drafts     = challenges.filter(c => c.status === 'draft').length;
   const scheduled  = challenges.filter(c => c.status === 'scheduled').length;
-  const totalSolves = challenges.reduce((s, c) => s + (c.solves || 0), 0);
+
+  const totals = analytics?.totals ?? {};
+  const totalSolves = totals.solves ?? 0;
+  const liveSolves = totals.correct_submissions ?? 0;
+  const liveAttempts = totals.attempts ?? 0;
   const avgSolves = challenges.length ? Math.round(totalSolves / challenges.length) : 0;
 
-  const liveSolves = solves.filter(s => s.correct).length;
-  const liveAttempts = solves.length;
+  const solvesByChallenge = new Map((analytics?.per_challenge ?? []).map(c => [c.id, c.solve_count]));
 
-  const recentSolves = [...solves].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)).slice(0, 8);
+  const recentSolves = (analytics?.recent_activity ?? []).map(a => ({
+    id: a.id,
+    user: a.username,
+    challengeId: a.challenge_id,
+    correct: a.correct,
+    submittedAt: formatStamp(a.created_at),
+  }));
   const challengeTitle = (id) => challenges.find(c => c.id === Number(id))?.title || `Challenge #${id}`;
 
   const exportLeaderboard = () => {
-    const rows = [...adminUsers]
+    const rows = [...(analytics?.leaderboard ?? [])]
       .sort((a, b) => b.points - a.points)
-      .map((u, i) => ({ rank: i + 1, username: u.username, email: u.email, role: u.role, solved: u.solved, points: u.points, status: u.status }));
+      .map((u, i) => ({ rank: i + 1, username: u.username, email: u.email, role: u.role, solved: u.solves, points: u.points, status: u.status }));
     downloadCsv({ filename: `leaderboard-${new Date().toISOString().slice(0, 10)}.csv`, columns: ['rank', 'username', 'email', 'role', 'solved', 'points', 'status'], rows });
   };
 
@@ -136,7 +135,7 @@ export default function AdminDashboard() {
                 Admin Session Active
               </div>
               <h1 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', fontWeight: 800, margin: 0 }}>
-                {greeting}, <span style={{ color: 'var(--accent-green)' }}>{user.username}</span>.
+                {greeting}, <span style={{ color: 'var(--accent-green)' }}>{user.displayName || user.username}</span>.
               </h1>
               <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0', fontSize: '0.95rem', maxWidth: 520 }}>
                 Administer the platform. Publish challenges, review submissions, and keep the field running.
@@ -190,14 +189,23 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="row g-3 mt-4 mb-4">
-        {stats.map((s, i) => (
-          <div key={s.label} className={`col-6 col-md-4 col-xl animate-fade-in-up delay-${i * 100}`}>
-            <StatCard {...s} />
-          </div>
-        ))}
-      </div>
+      {error && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.28)', borderRadius: 10, padding: '12px 16px', marginTop: 20, color: 'var(--accent-red)', fontSize: '0.85rem' }}>
+          <AlertTriangle size={16} /> {error}
+          <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={load}>Retry</button>
+        </div>
+      )}
+
+      {/* Stats - hidden on error so a failed load can never present as a zero */}
+      {!error && (
+        <div className="row g-3 mt-4 mb-4">
+          {stats.map((s, i) => (
+            <div key={s.label} className={`col-6 col-md-4 col-xl animate-fade-in-up delay-${i * 100}`}>
+              <StatCard {...s} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Quick actions */}
       <div className="mb-5">
@@ -221,6 +229,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {!error && (
       <div className="row g-4 mb-4">
         {/* Recent challenges */}
         <div className="col-lg-8">
@@ -239,6 +248,10 @@ export default function AdminDashboard() {
             {loading ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
                 Loading challenges...
+              </div>
+            ) : error ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+                Challenges unavailable.
               </div>
             ) : recent.length === 0 ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
@@ -260,7 +273,7 @@ export default function AdminDashboard() {
                         <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.title}</td>
                         <td><span className="cat-chip" style={{ fontSize: '0.65rem' }}>{c.category}</span></td>
                         <td><span className={`diff-badge diff-${c.difficulty.toLowerCase()}`}>{c.difficulty}</span></td>
-                        <td style={{ fontFamily: 'var(--font-mono)' }}>{c.solves}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)' }}>{solvesByChallenge.get(c.id) ?? 0}</td>
                         <td>
                           <span style={{
                             fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700,
@@ -286,6 +299,8 @@ export default function AdminDashboard() {
             <div className="section-title mb-4">Challenges by Category</div>
             {loading ? (
               <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>Loading...</div>
+            ) : error ? (
+              <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>Unavailable.</div>
             ) : byCategory.length === 0 ? (
               <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>No data yet.</div>
             ) : (
@@ -308,8 +323,10 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Live activity feed */}
+      {!error && (
       <div className="row g-4">
         <div className="col-lg-8">
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
@@ -321,7 +338,15 @@ export default function AdminDashboard() {
                 Analytics <ArrowRight size={13} />
               </Link>
             </div>
-            {recentSolves.length === 0 ? (
+            {loading ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+                Loading activity...
+              </div>
+            ) : error ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+                Solve activity unavailable.
+              </div>
+            ) : recentSolves.length === 0 ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
                 No solve activity recorded yet.
               </div>
@@ -368,6 +393,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

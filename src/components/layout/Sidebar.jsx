@@ -64,6 +64,26 @@ export default function Sidebar() {
           border: '1px solid var(--border-color)',
           borderRadius: 10,
         }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+              background: 'linear-gradient(135deg, var(--accent-green), var(--accent-cyan))',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 900, color: '#0A0917',
+            }}>
+              {user.avatar
+                ? <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : (user.username?.[0] || 'U').toUpperCase()}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.displayName || user.username}
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+                @{user.username}
+              </div>
+            </div>
+          </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Your Stats
           </div>
@@ -76,21 +96,26 @@ export default function Sidebar() {
           <div className="d-flex justify-content-between mb-1">
             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Streak</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--accent-orange)', fontWeight: 700 }}>
-              {user.streak} days
+              {user.streak ? `${user.streak} days` : '—'}
             </span>
           </div>
           <div className="d-flex justify-content-between mb-2">
             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Rank</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 700 }}>
-              #{user.rank}
+              {user.rank != null ? `#${user.rank}` : '—'}
             </span>
           </div>
-          <div className="cf-progress">
-            <div className="cf-progress-bar" style={{ width: `${Math.min(100, (user.points / 10000) * 100)}%` }} />
-          </div>
-          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
-            {Math.round((user.points / 10000) * 100)}% to Elite
-          </div>
+          {user.progression && (
+            <>
+              <div className="cf-progress">
+                <div className="cf-progress-bar" style={{ width: `${user.progression.elitePct}%` }} />
+              </div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
+                L{user.progression.level} {user.progression.tier}
+                {!user.progression.isMax && ` · ${user.progression.elitePct}% to Elite`}
+              </div>
+            </>
+          )}
         </div>
       )}
     </aside>

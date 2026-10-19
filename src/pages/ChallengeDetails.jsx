@@ -22,7 +22,7 @@ const fileIcons = {
 export default function ChallengeDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addPoints } = useApp();
+  const { addPoints, refreshStats, refreshUnreadCount } = useApp();
 
   const [challenge, setChallenge] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -94,7 +94,14 @@ export default function ChallengeDetails() {
         if (!res.alreadySolved) {
           addPoints(res.points);
           setShowComplete(true);
+          // A first solve is the one action that creates a notification, so
+          // pull the fresh unread total (a single request, not polling). A
+          // repeat submission creates nothing, hence the alreadySolved guard.
+          refreshUnreadCount();
         }
+        // Solved count, category progress and recent activity all changed
+        // server-side; refetch so the dashboard/profile stay authoritative.
+        refreshStats();
       }
     } catch (err) {
       // 400 validation, 401 session, 404 hidden/removed, 429 throttled, or a
